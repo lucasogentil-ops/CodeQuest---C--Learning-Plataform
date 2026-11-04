@@ -1,6 +1,9 @@
 /build/
 /dist/
-/docs/
+/docs/*
+!/docs/images/
+/docs/images/*
+!/docs/images/topic-map.jpg
 /Documents/
 ~$*
 ~WRL*.tmp
