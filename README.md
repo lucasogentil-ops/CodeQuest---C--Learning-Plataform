@@ -4,7 +4,7 @@
 
 CodeQuest is a Windows desktop learning app designed to help beginners understand C and selected C++ concepts. It brings short lessons, visual code walkthroughs and missing-code questions together in a colourful topic map.
 
-Created by **Lucas Oliveira** as an Advanced Programming project, CodeQuest focuses on making programming behaviour easier to see and explain.
+Created by **Lucas Oliveira And Quentin Allegre** as an Advanced Programming project, CodeQuest focuses on making programming behaviour easier to see and explain.
 
 > **Development status:** The first C and raylib development build is working. It includes the topic map, eight topic previews and screen navigation. Lessons, questions, walkthroughs and progress saving are still in development. A standalone release is not yet available.
 
@@ -102,10 +102,6 @@ Validation will cover correct answers and explanations, accurate walkthrough sta
 The first development build compiled without warnings under `-Wall -Wextra -Wpedantic`. Manual checks verified startup, opening the Arrays preview, returning to the map, opening the progress screen and exiting cleanly with code 0. No lesson, quiz or persistence checks have been completed yet.
 
 ## Documentation
-
-- [Development plan](DEVELOPMENT_PLAN.md)
-- [Development journal](docs/DEVELOPMENT_JOURNAL.md)
-- [Milestone 1 planning and design entry](docs/MILESTONE_1.md)
 - [Product requirements](Documents/CodeQuest%20PRD.docx)
 - [Technical architecture and data design](Documents/Technical%20Architecture%20and%20Data%20Design.docx)
 
