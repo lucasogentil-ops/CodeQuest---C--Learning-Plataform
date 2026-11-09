@@ -1,0 +1,28 @@
+{
+  "title": "Change a value through a pointer",
+  "explanation": "A pointer stores an address. The & operator gets an address.\nUse * on the pointer to access the value at that address.",
+  "code": "int count = 4;\nint *p = &count;\n*p = 8;",
+  "question": {
+    "prompt": "Which line sets count to 8 through p?",
+    "code": "int count = 4;\nint *p = &count;\n/* Missing line */",
+    "hint": "Use the operator that accesses the pointed-to value, then replace it.",
+    "options": [
+      {
+        "id": "a",
+        "code": "*p = 8;",
+        "feedback": "*p accesses count. Assigning 8 sets its value."
+      },
+      {
+        "id": "b",
+        "code": "*p += 8;",
+        "feedback": "This adds 8 to 4, giving 12."
+      },
+      {
+        "id": "c",
+        "code": "count += 8;",
+        "feedback": "This adds 8 directly to count, giving 12."
+      }
+    ],
+    "correctOptionId": "a"
+  }
+}

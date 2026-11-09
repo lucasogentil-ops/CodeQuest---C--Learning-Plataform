@@ -5,6 +5,8 @@
 /docs/images/*
 !/docs/images/topic-map.jpg
 /Documents/
+/Doc Refs/
+/DEVELOPMENT_PLAN.md
 ~$*
 ~WRL*.tmp
 *.log

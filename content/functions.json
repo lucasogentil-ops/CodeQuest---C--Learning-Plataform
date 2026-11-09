@@ -1,0 +1,28 @@
+{
+  "title": "Return a value from a function",
+  "explanation": "A function can give a value back to its caller using return.\nThe parameter is a local copy when an int is passed by value.",
+  "code": "int doubleValue(int n) {\n    return n * 2;\n}",
+  "question": {
+    "prompt": "Which line returns twice the input?",
+    "code": "int doubleValue(int n) {\n    /* Missing line */\n}",
+    "hint": "Think about the difference between doubling and adding two.",
+    "options": [
+      {
+        "id": "a",
+        "code": "return n * 2;",
+        "feedback": "Multiplying by 2 doubles the input."
+      },
+      {
+        "id": "b",
+        "code": "return n + 2;",
+        "feedback": "Adding 2 only doubles the input when it is 2."
+      },
+      {
+        "id": "c",
+        "code": "return n;",
+        "feedback": "Returning n gives the original input."
+      }
+    ],
+    "correctOptionId": "a"
+  }
+}

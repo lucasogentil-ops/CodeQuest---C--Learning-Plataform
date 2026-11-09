@@ -1,0 +1,12 @@
+{
+  "title": "Swap two values through pointers",
+  "language": "C",
+  "lines": ["int a = 5, b = 9;", "int *p = &a, *q = &b;", "int temp = *p;", "*p = *q;", "*q = temp;"],
+  "steps": [
+    {"line": 0, "explanation": "Start with two separate integers.\nThe pointers have not been declared yet.", "values": ["a = 5", "b = 9", "temp: not declared"]},
+    {"line": 1, "explanation": "p points to a and q points to b.\nThe labels show which variable each points to.", "values": ["p -> a = 5", "q -> b = 9", "temp: not declared"]},
+    {"line": 2, "explanation": "Save the value that p points to in temp.", "values": ["p -> a = 5", "q -> b = 9", "temp = 5"]},
+    {"line": 3, "explanation": "Copy the value at q into the variable at p.\nBoth a and b now hold 9.", "values": ["p -> a = 9", "q -> b = 9", "temp = 5"]},
+    {"line": 4, "explanation": "Write the saved value into the variable at q.\nThe values swapped. The pointer targets stayed fixed.", "values": ["p -> a = 9", "q -> b = 5", "temp = 5"]}
+  ]
+}

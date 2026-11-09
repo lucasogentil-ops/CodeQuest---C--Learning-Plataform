@@ -1,0 +1,16 @@
+{
+  "title": "Change a value in an array",
+  "explanation": "An array stores several values of the same type.\nEach position has an index, starting at zero.\n\nvalues[1] selects the second element, which is 4.\nAdding 3 to it changes the array to {2, 7, 6}.",
+  "code": "int values[3] = {2, 4, 6};\nvalues[1] += 3;",
+  "question": {
+    "prompt": "Which line adds 3 to the second value?",
+    "hint": "Count positions from zero and choose an update that keeps the old value.",
+    "code": "int values[3] = {2, 4, 6};\n/* Missing line */",
+    "options": [
+      {"id": "a", "code": "values[1] += 3;", "feedback": "Index 1 selects the second element.\nThe += operator adds to its current value."},
+      {"id": "b", "code": "values[2] += 3;", "feedback": "Index 2 selects the third element.\nThe second element is at index 1."},
+      {"id": "c", "code": "values[1] = 3;", "feedback": "The = operator replaces the old value.\nUse += to add to the old value."}
+    ],
+    "correctOptionId": "a"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "title": "Count with a for loop",
+  "explanation": "A for loop starts with an initial value and checks its condition\nbefore each pass. The update runs after each pass.",
+  "code": "for (int i = 0; i < 3; i++) {\n    printf(\"%d\\n\", i);\n}",
+  "question": {
+    "prompt": "Which condition prints 0, 1 and 2?",
+    "code": "for (int i = 0; /* Missing line */; i++) {\n    printf(\"%d\\n\", i);\n}",
+    "hint": "Check when the loop first needs to stop.",
+    "options": [
+      {
+        "id": "a",
+        "code": "i < 3",
+        "feedback": "i < 3 stops before i reaches 3."
+      },
+      {
+        "id": "b",
+        "code": "i <= 3",
+        "feedback": "i <= 3 also prints 3."
+      },
+      {
+        "id": "c",
+        "code": "i < 2",
+        "feedback": "i < 2 stops before printing 2."
+      }
+    ],
+    "correctOptionId": "a"
+  }
+}

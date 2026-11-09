@@ -1,0 +1,28 @@
+{
+  "title": "Read a grid cell",
+  "explanation": "A two-dimensional array has rows and columns.\nUse grid[row][column]. Both indexes start at zero.",
+  "code": "int grid[2][2] = {{2, 4}, {6, 8}};\nint value = grid[1][0];",
+  "question": {
+    "prompt": "Which expression reads 6 from the grid?",
+    "code": "int grid[2][2] = {{2, 4}, {6, 8}};\nint value = /* Missing line */;",
+    "hint": "Find the row first, then count across that row from zero.",
+    "options": [
+      {
+        "id": "a",
+        "code": "grid[1][0]",
+        "feedback": "Row 1 and column 0 contain 6."
+      },
+      {
+        "id": "b",
+        "code": "grid[0][1]",
+        "feedback": "Row 0 and column 1 contain 4."
+      },
+      {
+        "id": "c",
+        "code": "grid[1][1]",
+        "feedback": "Row 1 and column 1 contain 8."
+      }
+    ],
+    "correctOptionId": "a"
+  }
+}

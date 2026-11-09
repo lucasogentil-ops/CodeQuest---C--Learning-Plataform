@@ -1,107 +1,64 @@
 # CodeQuest
 
-**Learn C by following the code, seeing values change and practising one concept at a time.**
+CodeQuest is an offline Windows desktop app for learning C and selected C++ concepts. Pick a topic, read a short code example, and practise by choosing the missing line. Three interactive walkthroughs show how values change as you step through an example.
 
-CodeQuest is a Windows desktop learning app designed to help beginners understand C and selected C++ concepts. It brings short lessons, visual code walkthroughs and missing-code questions together in a colourful topic map.
+![CodeQuest topic map with eight learning topics](docs/images/topic-map.jpg)
 
-Created by **Lucas Oliveira And Quentin Allegre** as an Advanced Programming project, CodeQuest focuses on making programming behaviour easier to see and explain.
+## What you can do
 
-> **Development status:** The first C and raylib development build is working. It includes the topic map, eight topic previews and screen navigation. Lessons, questions, walkthroughs and progress saving are still in development. A standalone release is not yet available.
+- **Explore any topic.** All eight topics are available from the start, each with a lesson, a code example and a practice question.
+- **Step through code.** Follow an array update, a pointer swap in C, or a comparison of pass by value and pass by reference in C++. Use **Next**, **Previous** and **Reset** to inspect prepared examples with highlighted lines and visible values.
+- **Practise with feedback.** A wrong answer gives you a hint. A second wrong answer on the same question unlocks the solution and its explanation. Use **Try again** to retry the question.
+- **Generate more Arrays questions.** **New question** varies the starting values, target index, amount and operation. The answer choices are shuffled.
+- **Track practice during a session.** **My progress** counts topics where you submitted a correct answer. Opening a solution does not add to the count.
 
-![CodeQuest desktop topic map with a dark navy interface, readable text and purple accents](docs/images/topic-map.jpg)
+## Topics
 
-## The learning experience
-
-The planned learning flow follows five steps:
-
-1. **Explore:** choose any topic from the map or continue a previous lesson.
-2. **Learn:** read a concise explanation with a labelled code example.
-3. **Trace:** step through prepared examples while watching variables, arrays and pointer targets change.
-4. **Practise:** select the missing code, receive feedback and retry with a hint.
-5. **Track:** see completed topics and earn badges, with progress saved locally.
-
-All topics will remain accessible. The app is designed for offline use without accounts or a server.
-
-## Curriculum
-
-| Topic | Concepts |
+| Topic | Example |
 | --- | --- |
-| C foundations | Types, input/output, operators and conversions |
-| Decisions and loops | Conditions, iteration and problem solving |
-| Arrays | Searching, insertion, deletion, reversing and rotation |
-| Two-dimensional arrays | Grid traversal and changes to array values |
-| Strings and scope | Null termination, word counting and variable visibility |
-| Functions and parameters | Return values, C pass by value and C++ references |
-| Pointers | Addresses, swaps and array/string operations |
-| Linked lists | Nodes, links and insertion operations |
+| C foundations | Print an integer with `printf` |
+| Decisions and loops | Choose the stopping condition for a `for` loop |
+| Arrays | Add to or subtract from an element by index |
+| Two-dimensional arrays | Read a cell using row and column indexes |
+| Strings and scope | Stop counting at the null terminator |
+| Functions and parameters | Return a value and compare copies with references |
+| Pointers | Assign through a pointer and swap two values |
+| Linked lists | Link one node to the next |
 
-C and C++ examples will be labelled explicitly. Walkthroughs replay authored states; they do not compile or execute user-written code.
+## Build and run on Windows
 
-## Getting started
+The current version runs from source. Use MSYS2 UCRT64 with GCC, CMake, Ninja, raylib 6.0 and cJSON. The verified toolchain used GCC 16.2.0, CMake 4.4.4, Ninja 1.13.2 and cJSON 1.7.19.
 
-### Run the app
-
-A Windows release has not been published yet. To run the current development build, follow the source instructions below. The development scripts supply the MSYS2 runtime path; double-clicking the executable without its runtime dependencies is not yet supported.
-
-### Build from source
-
-Use Windows with the MSYS2 UCRT64 toolchain and raylib installed. The current build was verified with GCC 16.2.0, CMake 4.4.4, Ninja 1.13.2 and raylib 6.0. CMake requires a compatible raylib 6.0 package. cJSON will be integrated when lesson loading is implemented.
-
-From PowerShell in the repository root:
+Open PowerShell in the repository root:
 
 ```powershell
 .\scripts\build.ps1
 .\scripts\run.ps1
 ```
 
-The scripts default to `C:\msys64\ucrt64`. For a different installation, pass the same toolchain location to both scripts:
+The scripts default to `C:\msys64\ucrt64`. If MSYS2 is installed elsewhere, pass the same toolchain location to both scripts:
 
 ```powershell
 .\scripts\build.ps1 -ToolchainRoot 'D:\msys64\ucrt64'
 .\scripts\run.ps1 -ToolchainRoot 'D:\msys64\ucrt64'
 ```
 
-The build produces `build/codequest.exe`. Select any topic to open its preview, use **Topic map** or **Back to topic map** to return, and select **My progress** to see the progress placeholder. Close the window or press Escape to exit.
+The build places `codequest.exe`, `assets/` and `content/` under `build/`. The run script supplies the MSYS2 runtime path. To try the app, select **Explore Arrays**, then choose **Walkthrough** or **Try a question**. Press **Escape** to exit.
 
-The current window is fixed at 1280 × 720 and uses bundled Noto Sans for readable, smoothly rendered text. The build copies `assets/` beside the executable; keep that folder with the app. Lesson content and standalone distribution are planned for later milestones. The commands above were verified against an existing toolchain installation; installation on a clean machine has not yet been checked.
+## How it’s built
 
-## Technology and architecture
+CodeQuest uses C11 and raylib for the desktop interface. cJSON loads the lessons, questions and prepared walkthrough steps from `content/`. Lesson text and examples can be edited there independently of the screen code. The app runs offline without an account.
 
-| Technology | Role and status |
-| --- | --- |
-| C11 | Application logic and data structures |
-| [raylib](https://www.raylib.com/) | Window, input, text and interface drawing |
-| [cJSON](https://github.com/DaveGamble/cJSON) | Planned: lesson loading and progress serialisation |
-| JSON | Editable lesson content and local progress files |
-| CMake, Ninja and GCC | Windows build toolchain |
-
-The design separates three responsibilities:
-
-- **Interface:** screens, navigation, code panels and visual feedback.
-- **Learning logic:** answer checking, walkthrough steps and completion rules.
-- **Data access:** content validation, progress saving and recovery.
-
-Keeping these responsibilities separate allows learning and storage rules to be checked independently of the window. Lesson content will live outside the C source, making it possible to add exercises without changing rendering code.
+The Windows build has passed with compiler warnings enabled. Checks with simulated button presses covered all eight practice flows and the navigation boundaries of all three walkthroughs.
 
 ## Roadmap
 
-- [x] Define product requirements and data design.
-- [x] Approve the initial interface concept.
-- [x] Set up the C and raylib application with topic navigation.
-- [ ] Complete one lesson-to-practice journey.
-- [ ] Add three visual walkthroughs and all eight topics.
-- [ ] Implement hints, retries, saved progress and badges.
-- [ ] Validate content, test recovery and package a Windows release.
+| Status | Work |
+| --- | --- |
+| Available | Eight lessons, three visual walkthroughs, randomised Arrays practice, hints, retries and solution explanations |
+| Next | Save progress between sessions and award badges for completed topics |
+| Planned | Verify save recovery, finish usability checks and package a standalone Windows release |
 
-Detailed tasks and progress evidence are maintained in the [development plan](DEVELOPMENT_PLAN.md).
+See the [development milestones](MILESTONES.md) for completed work and upcoming release goals.
 
-## Quality goals
-
-Validation will cover correct answers and explanations, accurate walkthrough states, safe step boundaries, clear hint and solution behaviour, consistent badge awards and reliable progress recovery. Interface checks will cover readable code, scrolling and mouse navigation.
-
-The first development build compiled without warnings under `-Wall -Wextra -Wpedantic`. Manual checks verified startup, opening the Arrays preview, returning to the map, opening the progress screen and exiting cleanly with code 0. No lesson, quiz or persistence checks have been completed yet.
-
-## Documentation
-- [Product requirements](Documents/CodeQuest%20PRD.docx)
-- [Technical architecture and data design](Documents/Technical%20Architecture%20and%20Data%20Design.docx)
-
+Created by **Lucas Oliveira and Quentin Allegre**.

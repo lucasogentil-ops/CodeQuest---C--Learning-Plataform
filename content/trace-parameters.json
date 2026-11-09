@@ -1,0 +1,11 @@
+{
+  "title": "Compare a copy and a reference",
+  "language": "C++",
+  "lines": ["void byValue(int n) { n += 1; }", "void byReference(int& n) { n += 1; }", "int main() {", "    int score = 5;", "    byValue(score);", "    byReference(score);", "}"],
+  "steps": [
+    {"line": 3, "explanation": "main creates score with a starting value of 5.", "values": ["score = 5", "n: outside a call", "Stage: start"]},
+    {"line": 4, "explanation": "byValue receives a copy. The copy becomes 6.\nThe original score stays at 5.", "values": ["score = 5", "n = 6 (copy)", "Stage: inside byValue"]},
+    {"line": 5, "explanation": "In C++, int& makes n another name for score.\nChanging n also changes score.", "values": ["score = 6", "n refers to score", "Stage: inside byReference"]},
+    {"line": 6, "explanation": "After both calls, score is 6.\nOnly the reference call changed the original.", "values": ["score = 6", "n: outside a call", "Stage: after both calls"]}
+  ]
+}

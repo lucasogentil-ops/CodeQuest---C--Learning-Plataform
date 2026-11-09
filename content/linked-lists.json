@@ -1,0 +1,28 @@
+{
+  "title": "Link two nodes",
+  "explanation": "Each node holds a value and a pointer to the next node.\nA null next pointer marks the end of the list.",
+  "code": "struct Node {\n    int value;\n    struct Node *next;\n};\nstruct Node b = {8, 0};\nstruct Node a = {4, &b};",
+  "question": {
+    "prompt": "Which line links a to b as its next node?",
+    "code": "struct Node { int value; struct Node *next; };\nstruct Node a = {4, 0}, b = {8, 0};\n/* Missing line */",
+    "hint": "Find the node whose next field should hold the address of b.",
+    "options": [
+      {
+        "id": "a",
+        "code": "a.next = &b;",
+        "feedback": "a.next stores the address of b."
+      },
+      {
+        "id": "b",
+        "code": "b.next = &a;",
+        "feedback": "This points b back to a."
+      },
+      {
+        "id": "c",
+        "code": "a.next = 0;",
+        "feedback": "A null next pointer leaves a at the end."
+      }
+    ],
+    "correctOptionId": "a"
+  }
+}
