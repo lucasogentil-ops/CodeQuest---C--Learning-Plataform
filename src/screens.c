@@ -1,6 +1,31 @@
 #include "screens.h"
 #include "ui.h"
 #include <stddef.h>
+#include <stdio.h>
+
+static const char *SavePath(void)
+{
+    return TextFormat("%sprogress.dat", GetApplicationDirectory());
+}
+
+// Loads the save once, the first time the app draws.
+static void EnsureProgressLoaded(AppState *app)
+{
+    static bool loaded = false;
+    if (loaded) return;
+    loaded = true;
+    app->loadStatus = ProgressLoad(SavePath(), &app->progress);
+    for (int i = 0; i < TOPIC_COUNT; i++)
+        app->practicePassed[i] = (app->progress.topics[i].badges & BADGE_COMPLETED) != 0;
+}
+
+static void BadgeSummary(uint32_t badges, char *text, size_t size)
+{
+    snprintf(text, size, "%s%s%s",
+             badges & BADGE_COMPLETED ? "Completed" : "",
+             badges & BADGE_FIRST_TRY ? "  |  First try" : "",
+             badges & BADGE_PERSISTENT ? "  |  Persistent" : "");
+}
 
 static const Walkthrough *TopicTrace(const AppState *app)
 {
@@ -51,7 +76,13 @@ static void DrawMap(AppState *app)
         app->screen = SCREEN_LESSON;
     }
     Label("Your badges", 878, 545, 21, CQ_TEXT);
-    Label("Your first badge is ahead of you.", 878, 581, 18, CQ_MUTED);
+    int firstTry = 0;
+    for (int i = 0; i < TOPIC_COUNT; i++)
+        if (app->progress.topics[i].badges & BADGE_FIRST_TRY) firstTry++;
+    Label(TextFormat("%d of %d topics completed", ProgressCompletedTopics(&app->progress),
+                     TOPIC_COUNT), 878, 579, 18, CQ_MUTED);
+    Label(app->progress.globalBadges & BADGE_MASTER ? "Master badge earned!" :
+          TextFormat("First-try badges: %d", firstTry), 878, 603, 18, CQ_MUTED);
 }
 
 static void DrawLesson(AppState *app)
@@ -72,6 +103,7 @@ static void DrawLesson(AppState *app)
             app->currentQuestion = lesson->question;
             app->selectedAnswer = NO_SELECTION;
             app->wrongAttempts = 0;
+            app->questionSubmissions = 0;
             app->showingSolution = false;
             app->screen = SCREEN_PRACTICE;
         }
@@ -139,6 +171,7 @@ static void StartNewQuestion(AppState *app)
     GenerateArraysQuestion(&app->currentQuestion);
     app->selectedAnswer = NO_SELECTION;
     app->wrongAttempts = 0;
+    app->questionSubmissions = 0;
     app->showingSolution = false;
     app->screen = SCREEN_PRACTICE;
 }
@@ -161,7 +194,12 @@ static void DrawPractice(AppState *app)
     if (app->selectedAnswer == NO_SELECTION) {
         Label("Select an answer to continue.", 662, 557, 20, CQ_MUTED);
     } else if (Button((Rectangle){662, 544, 220, 52}, "Check answer", true)) {
-        if (IsCorrectAnswer(question, app->selectedAnswer))
+        bool correct = IsCorrectAnswer(question, app->selectedAnswer);
+        app->newBadges = ProgressRecordAnswer(&app->progress, app->selectedTopic, correct,
+                                              app->questionSubmissions == 0);
+        app->questionSubmissions++;
+        app->saveFailed = !ProgressSave(SavePath(), &app->progress);
+        if (correct)
             app->practicePassed[app->selectedTopic] = true;
         else if (app->wrongAttempts < 2)
             app->wrongAttempts++;
@@ -189,6 +227,13 @@ static void DrawResults(AppState *app)
     Label(app->showingSolution ? "Correct answer" : "Your answer", 68, 282, 24, CQ_MUTED);
     Label(answer->code, 68, 326, 26, CQ_TEXT);
     Label(correct || app->showingSolution ? answer->feedback : question->hint, 68, 396, 24, CQ_TEXT);
+    if (app->newBadges) {
+        uint32_t topicBadges = app->newBadges & 0xFFu;
+        char names[96];
+        BadgeSummary(topicBadges, names, sizeof names);
+        Label(TextFormat("New badge: %s%s", names,
+                         app->newBadges >> 8 ? "  |  Master" : ""), 68, 490, 22, CQ_PALE);
+    }
     if (Button((Rectangle){68, 544, 225, 52}, "Back to topic map", correct))
         app->screen = SCREEN_MAP;
     if (Button((Rectangle){310, 544, 205, 52}, "Try again", !correct)) {
@@ -205,29 +250,172 @@ static void DrawResults(AppState *app)
         StartNewQuestion(app);
 }
 
+// ---- Exam mode: one random question from each of up to five random topics.
+
+static void ShuffleOptions(Question *question)
+{
+    // Swap whole options so each ID stays with its code and feedback.
+    for (int i = OPTION_COUNT - 1; i > 0; i--) {
+        int j = GetRandomValue(0, i);
+        AnswerOption temporary = question->options[i];
+        question->options[i] = question->options[j];
+        question->options[j] = temporary;
+    }
+}
+
+static int AvailableTopics(const AppState *app, int topics[TOPIC_COUNT])
+{
+    int count = 0;
+    for (int i = 0; i < TOPIC_COUNT; i++)
+        if (app->lessonAvailable[i]) topics[count++] = i;
+    return count;
+}
+
+static void StartExam(AppState *app)
+{
+    ExamState *exam = &app->exam;
+    int topics[TOPIC_COUNT];
+    int available = AvailableTopics(app, topics);
+    for (int i = available - 1; i > 0; i--) {   // Fisher-Yates shuffle
+        int j = GetRandomValue(0, i);
+        int temporary = topics[i];
+        topics[i] = topics[j];
+        topics[j] = temporary;
+    }
+    *exam = (ExamState){.phase = EXAM_QUESTION, .selected = NO_SELECTION};
+    exam->count = available < EXAM_LENGTH ? available : EXAM_LENGTH;
+    for (int i = 0; i < exam->count; i++) {
+        exam->topics[i] = topics[i];
+        if (topics[i] == ARRAYS_TOPIC) GenerateArraysQuestion(&exam->questions[i]);
+        else exam->questions[i] = app->lessons[topics[i]].question;
+        ShuffleOptions(&exam->questions[i]);
+    }
+}
+
+static void DrawExamIntro(AppState *app)
+{
+    int topics[TOPIC_COUNT];
+    int available = AvailableTopics(app, topics);
+    Label("EXAM MODE", 40, 122, 18, CQ_PURPLE);
+    Label("Test yourself", 40, 158, 36, CQ_TEXT);
+    DrawPanel((Rectangle){40, 250, 1200, 376});
+    if (available == 0) {
+        Label("No lessons could be loaded, so there are no questions yet.", 68, 290, 24, CQ_TEXT);
+        return;
+    }
+    Label(TextFormat("%d questions, each from a different topic, chosen at random.",
+                     available < EXAM_LENGTH ? available : EXAM_LENGTH), 68, 290, 26, CQ_TEXT);
+    Label("No hints and no second tries.", 68, 350, 24, CQ_MUTED);
+    Label("Your score and the correct answers appear at the end.", 68, 390, 24, CQ_MUTED);
+    Label("Exam answers do not change your badges.", 68, 430, 24, CQ_MUTED);
+    if (Button((Rectangle){68, 544, 225, 52}, "Start exam", true)) StartExam(app);
+}
+
+static void DrawExamQuestion(AppState *app)
+{
+    ExamState *exam = &app->exam;
+    const Question *question = &exam->questions[exam->index];
+    bool last = exam->index + 1 == exam->count;
+    Label(TextFormat("Exam / Question %d of %d", exam->index + 1, exam->count),
+          40, 122, 18, CQ_PURPLE);
+    Label(question->prompt, 40, 158, 36, CQ_TEXT);
+    DrawPanel((Rectangle){40, 250, 570, 376});
+    Label("C example", 68, 282, 26, CQ_TEXT);
+    Label(question->code, 68, 345, 24, CQ_TEXT);
+    DrawPanel((Rectangle){634, 250, 606, 376});
+    Label("Choose one answer", 662, 282, 26, CQ_TEXT);
+    for (int i = 0; i < OPTION_COUNT; i++) {
+        const char *label = TextFormat("%c. %s", 'A' + i, question->options[i].code);
+        if (Button((Rectangle){662, (float)(330 + 60*i), 550, 48}, label, exam->selected == i))
+            exam->selected = i;
+    }
+    if (exam->selected == NO_SELECTION) {
+        Label("Select an answer to continue.", 662, 557, 20, CQ_MUTED);
+    } else if (Button((Rectangle){662, 544, 220, 52}, last ? "Finish exam" : "Next question", true)) {
+        bool correct = IsCorrectAnswer(question, exam->selected);
+        exam->correct[exam->index] = correct;
+        if (correct) exam->score++;
+        if (last) {
+            exam->phase = EXAM_SUMMARY;
+        } else {
+            exam->index++;
+            exam->selected = NO_SELECTION;
+        }
+    }
+}
+
+static void DrawExamSummary(AppState *app)
+{
+    const ExamState *exam = &app->exam;
+    Label("Exam / Result", 40, 122, 18, CQ_PURPLE);
+    Label(TextFormat("%d of %d correct", exam->score, exam->count), 40, 158, 36, CQ_TEXT);
+    DrawPanel((Rectangle){40, 250, 1200, 376});
+    for (int i = 0; i < exam->count; i++) {
+        const Question *question = &exam->questions[i];
+        int y = 276 + i * 52;
+        Label(TextFormat("%d. %s", i + 1, topicTitles[exam->topics[i]]), 68, y, 22,
+              exam->correct[i] ? CQ_TEXT : CQ_MUTED);
+        if (exam->correct[i]) {
+            Label("Correct", 420, y + 2, 20, CQ_PALE);
+        } else {
+            const char *answer = "";
+            for (int option = 0; option < OPTION_COUNT; option++)
+                if (IsCorrectAnswer(question, option)) answer = question->options[option].code;
+            Label(TextFormat("Missed. Correct answer: %s", answer), 420, y + 2, 20, CQ_MUTED);
+        }
+    }
+    if (Button((Rectangle){68, 544, 225, 52}, "Retake exam", true)) StartExam(app);
+    if (Button((Rectangle){310, 544, 225, 52}, "Back to topic map", false)) app->screen = SCREEN_MAP;
+}
+
+static void DrawExam(AppState *app)
+{
+    switch (app->exam.phase) {
+        case EXAM_INTRO: DrawExamIntro(app); break;
+        case EXAM_QUESTION: DrawExamQuestion(app); break;
+        case EXAM_SUMMARY: DrawExamSummary(app); break;
+    }
+}
+
 static void DrawProgress(const AppState *app)
 {
-    int passed = 0;
-    for (int i = 0; i < TOPIC_COUNT; i++)
-        if (app->practicePassed[i]) passed++;
+    const Progress *progress = &app->progress;
     Label("MY PROGRESS", 40, 122, 18, CQ_PURPLE);
-    Label("Your learning starts here", 40, 158, 36, CQ_TEXT);
-    Label(TextFormat("Practice passed this session: %d of %d topics", passed, TOPIC_COUNT),
+    Label("Your learning journey", 40, 158, 36, CQ_TEXT);
+    Label(TextFormat("Topics completed: %d of %d%s", ProgressCompletedTopics(progress), TOPIC_COUNT,
+                     progress->globalBadges & BADGE_MASTER ? "  |  Master badge earned" : ""),
           40, 216, 24, CQ_MUTED);
-    DrawPanel((Rectangle){40, 286, 1200, 260});
-    Label("Progress and badges are coming soon", 70, 320, 28, CQ_TEXT);
-    Label("Complete lessons and answer questions to earn topic badges.", 70, 384, 24, CQ_TEXT);
-    Label("Local saving will be added in the progress milestone.", 70, 444, 22, CQ_MUTED);
+    DrawPanel((Rectangle){40, 270, 1200, 360});
+    for (int i = 0; i < TOPIC_COUNT; i++) {
+        const TopicProgress *topic = &progress->topics[i];
+        int x = 68 + (i / 4) * 590;
+        int y = 292 + (i % 4) * 82;
+        char badges[96];
+        BadgeSummary(topic->badges, badges, sizeof badges);
+        Label(topicTitles[i], x, y, 22, topic->badges ? CQ_TEXT : CQ_MUTED);
+        if (topic->attempts == 0) {
+            Label("Not started", x, y + 28, 18, CQ_MUTED);
+        } else {
+            Label(TextFormat("%u of %u correct (%u%%)", topic->correct, topic->attempts,
+                             topic->correct * 100u / topic->attempts), x, y + 28, 18, CQ_MUTED);
+            if (badges[0]) Label(badges, x, y + 50, 18, CQ_PALE);
+        }
+    }
 }
 
 void DrawApp(AppState *app)
 {
+    EnsureProgressLoaded(app);
     ClearBackground(CQ_BACKGROUND);
     DrawRectangle(0, 0, 1280, 88, CQ_SURFACE);
     Label("Code", 40, 23, 30, CQ_TEXT);
     Label("Quest", 40 + (int)TextWidth("Code", 30), 23, 30, CQ_PURPLE);
     if (Button((Rectangle){238, 20, 150, 48}, "Topic map", app->screen == SCREEN_MAP)) app->screen = SCREEN_MAP;
     if (Button((Rectangle){404, 20, 170, 48}, "My progress", app->screen == SCREEN_PROGRESS)) app->screen = SCREEN_PROGRESS;
+    if (Button((Rectangle){590, 20, 120, 48}, "Exam", app->screen == SCREEN_EXAM)) {
+        if (app->screen != SCREEN_EXAM) app->exam.phase = EXAM_INTRO;  // fresh start each visit
+        app->screen = SCREEN_EXAM;
+    }
     switch (app->screen) {
         case SCREEN_MAP: DrawMap(app); break;
         case SCREEN_LESSON: DrawLesson(app); break;
@@ -235,7 +423,12 @@ void DrawApp(AppState *app)
         case SCREEN_PRACTICE: DrawPractice(app); break;
         case SCREEN_RESULTS: DrawResults(app); break;
         case SCREEN_TRACE: DrawWalkthrough(app); break;
+        case SCREEN_EXAM: DrawExam(app); break;
     }
     DrawRectangle(0, 656, 1280, 64, CQ_SURFACE);
     Label("CodeQuest  |  Development build", 40, 677, 17, CQ_MUTED);
+    if (app->saveFailed)
+        Label("Could not save progress.", 420, 677, 17, CQ_PALE);
+    else if (app->loadStatus == PROGRESS_CORRUPT)
+        Label("Save file was unreadable. Progress was reset.", 420, 677, 17, CQ_PALE);
 }
