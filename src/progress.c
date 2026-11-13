@@ -2,7 +2,9 @@
 #include <windows.h>
 #include <cjson/cJSON.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <wchar.h>
+#include <limits.h>
 #include "progress.h"
 
 static HANDLE lock = INVALID_HANDLE_VALUE;
@@ -10,6 +12,42 @@ static wchar_t savePath[MAX_PATH], backupPath[MAX_PATH], tempPath[MAX_PATH];
 static bool writable, validPrimary;
 
 typedef enum { MISSING, INVALID, UNSUPPORTED, VALID } LoadResult;
+
+/* Import the earlier exam build's save once. It recorded practice, but no lesson or trace visits. */
+static bool ImportLegacy(TopicProgress *topics)
+{
+    wchar_t path[MAX_PATH];
+    DWORD length = GetModuleFileNameW(NULL, path, MAX_PATH);
+    if (!length || length >= MAX_PATH) return false;
+    wchar_t *name = wcsrchr(path, L'\\');
+    if (!name || name - path + 14 >= MAX_PATH) return false;
+    wcscpy(name + 1, L"progress.dat");
+    FILE *file = _wfopen(path, L"rb");
+    if (!file) return false;
+    enum { BODY_WORDS = 2 + PROGRESS_TOPICS * 3 + 1 };
+    uint32_t words[BODY_WORDS + 1];
+    bool complete = fread(words, sizeof words[0], BODY_WORDS + 1, file) == BODY_WORDS + 1 &&
+        fgetc(file) == EOF && !ferror(file);
+    fclose(file);
+    if (!complete || words[0] != 0x43515356u || words[1] != 1) return false;
+    uint32_t hash = 2166136261u;
+    for (int i = 0; i < BODY_WORDS; i++)
+        for (int shift = 0; shift < 32; shift += 8)
+            hash = (hash ^ ((words[i] >> shift) & 0xffu)) * 16777619u;
+    if (hash != words[BODY_WORDS]) return false;
+    for (int i = 0; i < PROGRESS_TOPICS; i++) {
+        const uint32_t *entry = &words[2 + i * 3];
+        if (entry[1] > entry[0] || entry[2] > 7) return false;
+    }
+    for (int i = 0; i < PROGRESS_TOPICS; i++) {
+        const uint32_t *entry = &words[2 + i * 3];
+        topics[i].attempts = entry[0] > INT_MAX ? INT_MAX : (int)entry[0];
+        topics[i].solved = entry[1] != 0;
+        topics[i].firstTry = (entry[2] & 2u) != 0;
+        topics[i].persistent = (entry[2] & 4u) != 0;
+    }
+    return true;
+}
 
 static LoadResult ReadSave(const wchar_t *path, TopicProgress *topics)
 {
@@ -46,15 +84,20 @@ static LoadResult ReadSave(const wchar_t *path, TopicProgress *topics)
             const cJSON *solved = cJSON_GetObjectItemCaseSensitive(entry, "solved");
             const cJSON *solution = cJSON_GetObjectItemCaseSensitive(entry, "solution");
             const cJSON *attempts = cJSON_GetObjectItemCaseSensitive(entry, "attempts");
+            const cJSON *firstTry = cJSON_GetObjectItemCaseSensitive(entry, "firstTry");
+            const cJSON *persistent = cJSON_GetObjectItemCaseSensitive(entry, "persistent");
             if (!cJSON_IsBool(viewed) || !cJSON_IsBool(traced) ||
                 !cJSON_IsBool(solved) || !cJSON_IsBool(solution) ||
                 !cJSON_IsNumber(attempts) || attempts->valueint < 0 ||
-                attempts->valuedouble != attempts->valueint) {
+                attempts->valuedouble != attempts->valueint ||
+                (firstTry && !cJSON_IsBool(firstTry)) ||
+                (persistent && !cJSON_IsBool(persistent))) {
                 result = INVALID;
                 break;
             }
             loaded[i] = (TopicProgress){cJSON_IsTrue(viewed), cJSON_IsTrue(traced),
-                cJSON_IsTrue(solved), cJSON_IsTrue(solution), attempts->valueint};
+                cJSON_IsTrue(solved), cJSON_IsTrue(solution), attempts->valueint,
+                cJSON_IsTrue(firstTry), cJSON_IsTrue(persistent)};
         }
         if (result == VALID)
             for (int i = 0; i < PROGRESS_TOPICS; i++) topics[i] = loaded[i];
@@ -103,6 +146,9 @@ void OpenProgress(Progress *progress)
     } else if (primary != MISSING || backup != MISSING) {
         writable = false;
         progress->notice = "Saved progress could not be read. The files have been preserved.";
+    } else if (ImportLegacy(progress->topics)) {
+        SaveProgress(progress);
+        if (!progress->retry) progress->notice = "Earlier practice progress imported.";
     }
 }
 
@@ -116,9 +162,10 @@ void SaveProgress(Progress *progress)
         fprintf(file, "{\"version\":1,\"topics\":[");
         for (int i = 0; i < PROGRESS_TOPICS; i++) {
             TopicProgress t = progress->topics[i];
-            fprintf(file, "%s{\"viewed\":%s,\"traced\":%s,\"solved\":%s,\"solution\":%s,\"attempts\":%d}",
+            fprintf(file, "%s{\"viewed\":%s,\"traced\":%s,\"solved\":%s,\"solution\":%s,\"attempts\":%d,\"firstTry\":%s,\"persistent\":%s}",
                 i ? "," : "", t.viewed ? "true" : "false", t.traced ? "true" : "false",
-                t.solved ? "true" : "false", t.solution ? "true" : "false", t.attempts);
+                t.solved ? "true" : "false", t.solution ? "true" : "false", t.attempts,
+                t.firstTry ? "true" : "false", t.persistent ? "true" : "false");
         }
         fprintf(file, "]}");
         ok = !ferror(file);

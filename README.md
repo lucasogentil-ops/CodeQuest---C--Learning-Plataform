@@ -14,6 +14,8 @@ CodeQuest is an offline Windows desktop app for learning C and selected C++ conc
 
 ## Topics
 
+**Exam** gives you five questions from different topics and shows your score at the end. Exam results are separate from practice badges.
+
 | Topic | Example |
 | --- | --- |
 | C foundations | Print an integer with `printf` |

@@ -8,6 +8,7 @@ enum { PROGRESS_TOPICS = 8 };
 typedef struct {
     bool viewed, traced, solved, solution;
     int attempts;
+    bool firstTry, persistent;
 } TopicProgress;
 
 typedef struct {
