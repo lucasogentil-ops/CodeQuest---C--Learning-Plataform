@@ -3,10 +3,30 @@
 #include "ui.h"
 #include <stdio.h>
 
+enum { DESIGN_WIDTH = 1280, DESIGN_HEIGHT = 720 };
+
+static Camera2D LayoutCamera(void)
+{
+    int width = GetScreenWidth();
+    int height = GetScreenHeight();
+    float horizontal = (float)width / DESIGN_WIDTH;
+    float vertical = (float)height / DESIGN_HEIGHT;
+    float scale = horizontal < vertical ? horizontal : vertical;
+    if (scale <= 0.0f) scale = 1.0f;
+
+    int left = (int)((width - DESIGN_WIDTH * scale) / 2);
+    int top = (int)((height - DESIGN_HEIGHT * scale) / 2);
+    SetMouseOffset(-left, -top);
+    SetMouseScale(1.0f / scale, 1.0f / scale);
+    return (Camera2D){.offset = {(float)left, (float)top}, .zoom = scale};
+}
+
 int main(void)
 {
-    InitWindow(1280, 720, "CodeQuest - Learn C step by step");
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_ALWAYS_RUN);
+    InitWindow(DESIGN_WIDTH, DESIGN_HEIGHT, "CodeQuest - Learn C step by step");
     if (!IsWindowReady()) return 1;
+    SetWindowMinSize(640, 360);
     SetTargetFPS(60);
     if (!LoadUi()) {
         fprintf(stderr, "Cannot load assets/fonts/NotoSans.ttf. Rebuild to copy the font assets.\n");
@@ -38,9 +58,36 @@ int main(void)
         if (!LoadWalkthrough(path, &app.traces[i]))
             fprintf(stderr, "Cannot load walkthrough: %s\n", path);
     }
+    bool fullscreen = false;
     while (!WindowShouldClose()) {
+        if (IsKeyPressed(KEY_F11)) {
+            ToggleBorderlessWindowed();
+            fullscreen = !fullscreen;
+        }
+        if (IsKeyPressed(KEY_F10)) {
+            if (fullscreen) {
+                ToggleBorderlessWindowed();
+                fullscreen = false;
+            }
+            if (IsWindowMaximized()) RestoreWindow();
+            else MaximizeWindow();
+        }
+        bool drawCursor = (fullscreen || IsWindowMaximized()) && IsCursorOnScreen() && IsWindowFocused();
+        if (drawCursor && !IsCursorHidden()) HideCursor();
+        if (!drawCursor && IsCursorHidden()) ShowCursor();
+        Camera2D camera = LayoutCamera();
         BeginDrawing();
+        BeginMode2D(camera);
         DrawApp(&app);
+        EndMode2D();
+        // Draw the pointer into the frame so recordings can capture it.
+        if (drawCursor) {
+            Vector2 tip = GetWorldToScreen2D(GetMousePosition(), camera);
+            Vector2 bottom = {tip.x, tip.y + 21};
+            Vector2 right = {tip.x + 15, tip.y + 14};
+            DrawTriangle(tip, bottom, right, WHITE);
+            DrawTriangleLines(tip, bottom, right, BLACK);
+        }
         EndDrawing();
     }
 

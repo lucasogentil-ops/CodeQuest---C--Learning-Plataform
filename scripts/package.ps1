@@ -1,9 +1,12 @@
-param([string]$ToolchainRoot = 'C:\msys64\ucrt64')
+param(
+    [string]$ToolchainRoot = 'C:\msys64\ucrt64',
+    [string]$OutputDirectory = (Join-Path (Split-Path -Parent $PSScriptRoot) 'dist')
+)
 $ErrorActionPreference = 'Stop'
 $project = Split-Path -Parent $PSScriptRoot
 & "$PSScriptRoot/build.ps1" -ToolchainRoot $ToolchainRoot
 
-$package = Join-Path $project 'dist/CodeQuest'
+$package = Join-Path $OutputDirectory 'CodeQuest'
 $licences = Join-Path $package 'licenses'
 New-Item -ItemType Directory -Force $licences | Out-Null
 foreach ($entry in 'codequest.exe', 'assets', 'content') {
@@ -23,7 +26,10 @@ Keep the assets, content and DLL files together with the executable.
 Choose a topic to read its lesson and try its practice question.
 Open My progress to see your badges. The app saves progress locally.
 Press Escape or close the window to exit.
+Press F11 to switch between windowed and fullscreen modes.
+For recording, press F10 to maximize the regular window before starting capture.
 '@ | Set-Content -LiteralPath "$package/START HERE.txt" -Encoding utf8
 
-Compress-Archive -LiteralPath $package -DestinationPath "$project/dist/CodeQuest-Windows-x64.zip" -Force
-Write-Output "Package created at $project/dist/CodeQuest-Windows-x64.zip"
+$archive = Join-Path $OutputDirectory 'CodeQuest-Windows-x64.zip'
+Compress-Archive -LiteralPath $package -DestinationPath $archive -Force
+Write-Output "Package created at $archive"

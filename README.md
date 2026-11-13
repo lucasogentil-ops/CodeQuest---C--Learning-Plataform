@@ -29,9 +29,13 @@ CodeQuest is an offline Windows desktop app for learning C and selected C++ conc
 
 ## Run on Windows
 
-Download the [Windows x64 ZIP](https://github.com/lucasogentil-ops/CodeQuest---C--Learning-Plataform/releases/tag/v0.1.0), extract it and open `codequest.exe` from the extracted CodeQuest folder. Keep its DLLs, assets and content together. From a source checkout, run `.\scripts\package.ps1` to build `dist/CodeQuest-Windows-x64.zip`.
+Download the [Windows x64 ZIP](https://github.com/lucasogentil-ops/CodeQuest---C--Learning-Plataform/releases/tag/v0.1.1), extract it and open `codequest.exe` from the extracted CodeQuest folder. Keep its DLLs, assets and content together. From a source checkout, run `.\scripts\package.ps1` to build `dist/CodeQuest-Windows-x64.zip`.
 
 ## Build from source
+
+Press **F11** to switch between the default 1280 × 720 window and borderless fullscreen at your monitor's resolution, including 1920 × 1080.
+
+For recording, press **F10** to maximize the regular window before starting capture. CodeQuest draws its pointer into the frame in both maximized and fullscreen modes.
 
 The current version runs from source. Use MSYS2 UCRT64 with GCC, CMake, Ninja, raylib 6.0 and cJSON. The verified toolchain used GCC 16.2.0, CMake 4.4.4, Ninja 1.13.2 and cJSON 1.7.19.
 
