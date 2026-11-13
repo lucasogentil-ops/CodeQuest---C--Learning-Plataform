@@ -10,7 +10,7 @@ CodeQuest is an offline Windows desktop app for learning C and selected C++ conc
 - **Step through code.** Follow an array update, a pointer swap in C, or a comparison of pass by value and pass by reference in C++. Use **Next**, **Previous** and **Reset** to inspect prepared examples with highlighted lines and visible values.
 - **Practise with feedback.** A wrong answer gives you a hint. A second wrong answer on the same question unlocks the solution and its explanation. Use **Try again** to retry the question.
 - **Generate more Arrays questions.** **New question** varies the starting values, target index, amount and operation. The answer choices are shuffled.
-- **Track practice during a session.** **My progress** counts topics where you submitted a correct answer. Opening a solution does not add to the count.
+- **Earn badges and resume your progress.** **My progress** shows badges for topics where you read the lesson, finish its walkthrough if available, and submit a correct answer. Progress is saved under `%LOCALAPPDATA%\CodeQuest`.
 
 ## Topics
 
@@ -25,7 +25,11 @@ CodeQuest is an offline Windows desktop app for learning C and selected C++ conc
 | Pointers | Assign through a pointer and swap two values |
 | Linked lists | Link one node to the next |
 
-## Build and run on Windows
+## Run on Windows
+
+Download the [Windows x64 ZIP](https://github.com/lucasogentil-ops/CodeQuest---C--Learning-Plataform/releases/tag/v0.1.0), extract it and open `codequest.exe` from the extracted CodeQuest folder. Keep its DLLs, assets and content together. From a source checkout, run `.\scripts\package.ps1` to build `dist/CodeQuest-Windows-x64.zip`.
+
+## Build from source
 
 The current version runs from source. Use MSYS2 UCRT64 with GCC, CMake, Ninja, raylib 6.0 and cJSON. The verified toolchain used GCC 16.2.0, CMake 4.4.4, Ninja 1.13.2 and cJSON 1.7.19.
 
@@ -56,8 +60,8 @@ The Windows build has passed with compiler warnings enabled. Checks with simulat
 | Status | Work |
 | --- | --- |
 | Available | Eight lessons, three visual walkthroughs, randomised Arrays practice, hints, retries and solution explanations |
-| Next | Save progress between sessions and award badges for completed topics |
-| Planned | Verify save recovery, finish usability checks and package a standalone Windows release |
+| Available | Local progress, save recovery and topic badges |
+| Release follow-up | Verify the packaged app on a separate Windows machine and record the final demo |
 
 See the [development milestones](MILESTONES.md) for completed work and upcoming release goals.
 

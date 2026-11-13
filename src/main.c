@@ -15,6 +15,7 @@ int main(void)
     }
 
     AppState app = {.screen = SCREEN_MAP, .selectedAnswer = NO_SELECTION};
+    OpenProgress(&app.progress);
     const char *lessonFiles[TOPIC_COUNT] = {
         [FOUNDATIONS_TOPIC] = "foundations.json", [LOOPS_TOPIC] = "loops.json",
         [ARRAYS_TOPIC] = "arrays.json", [GRID_TOPIC] = "arrays-2d.json",
@@ -44,6 +45,7 @@ int main(void)
     }
 
     UnloadUi();
+    CloseProgress();
     CloseWindow();
     return 0;
 }

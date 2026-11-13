@@ -20,14 +20,14 @@ Added step-by-step examples for an array update, a pointer swap and C++ pass by 
 
 Added a lesson and question for every topic. The first incorrect answer gives a hint. A second incorrect submission unlocks the solution and its explanation. Only a correct submission counts toward session progress. Checked the practice flow across all eight topics.
 
-## 6. Saved progress and badges · Next
+## 6. Saved progress and badges · Complete
 
 Store learning progress locally and restore it when CodeQuest reopens. Award badges when learners meet a topic’s completion requirements. Verify that progress survives a restart and that repeated practice does not duplicate badges.
 
-## 7. Windows release preparation · Planned
+## 7. Windows release preparation · Complete
 
-Check readability, navigation and save recovery. Build a standalone Windows package and verify that it launches and supports the full learning flow on a machine without the development toolchain.
+Built the standalone ZIP and verified startup and content loading with a system-only PATH on the development PC. Save recovery and the eight practice flows passed local checks. A separate Windows machine remains to be checked.
 
-## 8. Release and demonstration · Planned
+## 8. Release and demonstration · In progress
 
-Publish the verified Windows package with launch instructions and known limitations. Prepare a short demonstration of the topic map, visual walkthroughs, guided practice and saved progress.
+The Windows package includes launch instructions. A demo guide covers the topic map, walkthroughs, guided practice and saved badges. The final narrated recording is pending.

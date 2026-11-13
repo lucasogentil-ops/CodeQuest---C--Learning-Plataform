@@ -1,6 +1,9 @@
 #include "screens.h"
 #include "ui.h"
 #include <stddef.h>
+#include <limits.h>
+
+_Static_assert((int)TOPIC_COUNT == (int)PROGRESS_TOPICS, "Save topic count must match map");
 
 static const Walkthrough *TopicTrace(const AppState *app)
 {
@@ -58,6 +61,10 @@ static void DrawLesson(AppState *app)
 {
     int topic = app->selectedTopic;
     if (app->lessonAvailable[topic]) {
+        if (!app->progress.topics[topic].viewed) {
+            app->progress.topics[topic].viewed = true;
+            SaveProgress(&app->progress);
+        }
         const Lesson *lesson = &app->lessons[topic];
         Label(TextFormat("%s / Lesson", topicTitles[topic]), 40, 122, 18, CQ_PURPLE);
         Label(lesson->title, 40, 158, 36, CQ_TEXT);
@@ -95,6 +102,11 @@ static void DrawWalkthrough(AppState *app)
 {
     const Walkthrough *trace = TopicTrace(app);
     const TraceStep *step = &trace->steps[app->traceStep];
+    TopicProgress *progress = &app->progress.topics[app->selectedTopic];
+    if (app->traceStep == trace->stepCount - 1 && !progress->traced) {
+        progress->traced = true;
+        SaveProgress(&app->progress);
+    }
     Label(TextFormat("%s / WALKTHROUGH", trace->language), 40, 122, 18, CQ_PURPLE);
     Label(trace->title, 40, 158, 36, CQ_TEXT);
     Label(TextFormat("Step %d of %d  |  Values shown at this step",
@@ -161,11 +173,14 @@ static void DrawPractice(AppState *app)
     if (app->selectedAnswer == NO_SELECTION) {
         Label("Select an answer to continue.", 662, 557, 20, CQ_MUTED);
     } else if (Button((Rectangle){662, 544, 220, 52}, "Check answer", true)) {
+        TopicProgress *progress = &app->progress.topics[app->selectedTopic];
+        if (progress->attempts < INT_MAX) progress->attempts++;
         if (IsCorrectAnswer(question, app->selectedAnswer))
-            app->practicePassed[app->selectedTopic] = true;
+            progress->solved = true;
         else if (app->wrongAttempts < 2)
             app->wrongAttempts++;
         app->screen = SCREEN_RESULTS;
+        SaveProgress(&app->progress);
     }
     if (app->selectedTopic == ARRAYS_TOPIC &&
         Button((Rectangle){982, 544, 230, 52}, "New question", false))
@@ -198,26 +213,40 @@ static void DrawResults(AppState *app)
         app->screen = SCREEN_PRACTICE;
     }
     if (!correct && app->wrongAttempts >= 2 && !app->showingSolution &&
-        Button((Rectangle){532, 544, 220, 52}, "Show solution", false))
+        Button((Rectangle){532, 544, 220, 52}, "Show solution", false)) {
         app->showingSolution = true;
+        app->progress.topics[app->selectedTopic].solution = true;
+        SaveProgress(&app->progress);
+    }
     if (app->selectedTopic == ARRAYS_TOPIC &&
         Button((Rectangle){770, 544, 220, 52}, "New question", false))
         StartNewQuestion(app);
 }
 
-static void DrawProgress(const AppState *app)
+static void DrawProgress(AppState *app)
 {
-    int passed = 0;
-    for (int i = 0; i < TOPIC_COUNT; i++)
-        if (app->practicePassed[i]) passed++;
+    int badges = 0;
     Label("MY PROGRESS", 40, 122, 18, CQ_PURPLE);
-    Label("Your learning starts here", 40, 158, 36, CQ_TEXT);
-    Label(TextFormat("Practice passed this session: %d of %d topics", passed, TOPIC_COUNT),
-          40, 216, 24, CQ_MUTED);
-    DrawPanel((Rectangle){40, 286, 1200, 260});
-    Label("Progress and badges are coming soon", 70, 320, 28, CQ_TEXT);
-    Label("Complete lessons and answer questions to earn topic badges.", 70, 384, 24, CQ_TEXT);
-    Label("Local saving will be added in the progress milestone.", 70, 444, 22, CQ_MUTED);
+    for (int i = 0; i < TOPIC_COUNT; i++) {
+        const TopicProgress *topic = &app->progress.topics[i];
+        bool hasTrace = i == ARRAYS_TOPIC || i == POINTERS_TOPIC || i == PARAMETERS_TOPIC;
+        bool earned = topic->viewed && topic->solved && (!hasTrace || topic->traced);
+        if (earned) badges++;
+        int x = 40 + (i % 2)*610;
+        int y = 258 + (i / 2)*85;
+        DrawPanel((Rectangle){(float)x, (float)y, 590, 72});
+        Label(topicTitles[i], x + 18, y + 9, 22, CQ_TEXT);
+        const char *status = "Read the lesson";
+        if (earned) status = "Badge earned";
+        else if (topic->viewed && !topic->solved) status = "Pass the practice question";
+        else if (topic->viewed) status = "Finish the walkthrough";
+        Label(status, x + 18, y + 40, 18, earned ? CQ_PALE : CQ_MUTED);
+    }
+    Label(TextFormat("%d of %d badges earned", badges, TOPIC_COUNT), 40, 158, 36, CQ_TEXT);
+    Label("Read the lesson, finish its walkthrough if available, and pass practice.",
+          40, 211, 21, CQ_MUTED);
+    if (app->progress.retry && Button((Rectangle){1030, 604, 210, 43}, "Retry save", true))
+        SaveProgress(&app->progress);
 }
 
 void DrawApp(AppState *app)
@@ -237,5 +266,5 @@ void DrawApp(AppState *app)
         case SCREEN_TRACE: DrawWalkthrough(app); break;
     }
     DrawRectangle(0, 656, 1280, 64, CQ_SURFACE);
-    Label("CodeQuest  |  Development build", 40, 677, 17, CQ_MUTED);
+    Label(app->progress.notice ? app->progress.notice : "CodeQuest", 40, 677, 17, CQ_MUTED);
 }

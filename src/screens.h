@@ -2,6 +2,7 @@
 #define CODEQUEST_SCREENS_H
 
 #include "learning.h"
+#include "progress.h"
 
 typedef enum {
     SCREEN_MAP, SCREEN_LESSON, SCREEN_PROGRESS, SCREEN_PRACTICE, SCREEN_RESULTS, SCREEN_TRACE
@@ -22,7 +23,7 @@ typedef struct {
     Question currentQuestion;
     int wrongAttempts;
     bool showingSolution;
-    bool practicePassed[TOPIC_COUNT];
+    Progress progress;
     Walkthrough traces[TRACE_COUNT];
     int traceStep;
 } AppState;
