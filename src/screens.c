@@ -36,6 +36,7 @@ static void DrawMap(AppState *app)
     Label("Small steps. Clearer code.", 40, 158, 36, CQ_TEXT);
     Label("Choose any topic to explore. Every topic stays available.", 40, 210, 20, CQ_MUTED);
 
+    int tierCounts[BADGE_MASTER + 1] = {0};
     for (int i = 0; i < TOPIC_COUNT; i++) {
         int x = 40 + (i%2)*392;
         int y = 270 + (i/2)*92;
@@ -43,6 +44,9 @@ static void DrawMap(AppState *app)
             app->selectedTopic = i;
             app->screen = SCREEN_LESSON;
         }
+        BadgeTier tier = BadgeForScore(app->progress.topics[i].bestScore);
+        tierCounts[tier]++;
+        if (tier != BADGE_NONE) DrawBadgeIcon((Vector2){(float)x + 334, (float)y + 34}, 18, tier);
     }
     DrawPanel((Rectangle){850, 270, 390, 356});
     Label("YOUR FIRST STEP", 878, 296, 16, CQ_PALE);
@@ -54,7 +58,26 @@ static void DrawMap(AppState *app)
         app->screen = SCREEN_LESSON;
     }
     Label("Your badges", 878, 545, 21, CQ_TEXT);
-    Label("Your first badge is ahead of you.", 878, 581, 18, CQ_MUTED);
+    if (tierCounts[BADGE_NONE] == TOPIC_COUNT) {
+        Label("Your first badge is ahead of you.", 878, 581, 18, CQ_MUTED);
+        return;
+    }
+    for (int tier = BADGE_AVERAGE; tier <= BADGE_MASTER; tier++) {
+        int x = 892 + (tier - BADGE_AVERAGE) * 110;
+        DrawBadgeIcon((Vector2){(float)x, 594}, 14, tier);
+        Label(TextFormat("x %d", tierCounts[tier]), x + 22, 582, 20, CQ_TEXT);
+    }
+}
+
+static void ShuffleOptions(Question *question)
+{
+    // Swap whole options so each ID stays with its code and feedback.
+    for (int i = OPTION_COUNT - 1; i > 0; i--) {
+        int j = GetRandomValue(0, i);
+        AnswerOption temporary = question->options[i];
+        question->options[i] = question->options[j];
+        question->options[j] = temporary;
+    }
 }
 
 static void ResetPractice(AppState *app)
@@ -63,21 +86,39 @@ static void ResetPractice(AppState *app)
     app->wrongAttempts = 0;
     app->questionSubmissions = 0;
     app->showingSolution = false;
+    app->firstAnswerGiven = false;
     app->screen = SCREEN_PRACTICE;
 }
 
-/* Open question `index` of the selected topic's lesson. */
+/* Open question `index` of the selected topic's lesson. Question 0 starts a new chapter run. */
 static void OpenQuestion(AppState *app, int index)
 {
     const Lesson *lesson = &app->lessons[app->selectedTopic];
+    if (index == 0) app->runCorrect = 0;
     app->questionIndex = index;
     app->currentQuestion = lesson->questions[index];
+    ShuffleOptions(&app->currentQuestion);
+    app->generatedQuestion = false;
     ResetPractice(app);
 }
 
 static bool HasNextQuestion(const AppState *app)
 {
     return app->questionIndex + 1 < app->lessons[app->selectedTopic].questionCount;
+}
+
+/* Score the run, keep the best score and show the chapter summary. */
+static void FinishChapter(AppState *app)
+{
+    TopicProgress *progress = &app->progress.topics[app->selectedTopic];
+    int count = app->lessons[app->selectedTopic].questionCount;
+    app->runScore = app->runCorrect * 100 / count;
+    app->previousBest = progress->bestScore;
+    if (app->runScore > progress->bestScore) {
+        progress->bestScore = app->runScore;
+        SaveProgress(&app->progress);
+    }
+    app->screen = SCREEN_CHAPTER_DONE;
 }
 
 static void DrawLesson(AppState *app)
@@ -169,6 +210,8 @@ static void StartNewQuestion(AppState *app)
 {
     GenerateArraysQuestion(&app->currentQuestion);
     ResetPractice(app);
+    // An extra question is practice only. Skipping a lesson question for it counts as a miss.
+    app->generatedQuestion = true;
 }
 
 static void DrawPractice(AppState *app)
@@ -195,12 +238,10 @@ static void DrawPractice(AppState *app)
     } else if (Button((Rectangle){662, 544, 220, 52}, "Check answer", true)) {
         TopicProgress *progress = &app->progress.topics[app->selectedTopic];
         if (progress->attempts < INT_MAX) progress->attempts++;
-        if (IsCorrectAnswer(question, app->selectedAnswer)) {
-            progress->solved = true;
-            if (app->questionSubmissions == 0) progress->firstTry = true;
-            else progress->persistent = true;
-        } else if (app->wrongAttempts < 2)
-            app->wrongAttempts++;
+        bool correct = IsCorrectAnswer(question, app->selectedAnswer);
+        if (!app->firstAnswerGiven && !app->generatedQuestion && correct) app->runCorrect++;
+        app->firstAnswerGiven = true;
+        if (!correct && app->wrongAttempts < 2) app->wrongAttempts++;
         if (app->questionSubmissions < INT_MAX) app->questionSubmissions++;
         app->screen = SCREEN_RESULTS;
         SaveProgress(&app->progress);
@@ -227,8 +268,7 @@ static void DrawResults(AppState *app)
     Label(app->showingSolution ? "Correct answer" : "Your answer", 68, 282, 24, CQ_MUTED);
     Label(answer->code, 68, 326, 26, CQ_TEXT);
     Label(correct || app->showingSolution ? answer->feedback : question->hint, 68, 396, 24, CQ_TEXT);
-    bool next = HasNextQuestion(app);
-    if (Button((Rectangle){68, 544, 225, 52}, "Back to topic map", correct && !next))
+    if (Button((Rectangle){68, 544, 225, 52}, "Back to topic map", false))
         app->screen = SCREEN_MAP;
     if (Button((Rectangle){310, 544, 205, 52}, "Try again", !correct)) {
         app->selectedAnswer = NO_SELECTION;
@@ -242,26 +282,55 @@ static void DrawResults(AppState *app)
     if (!correct && app->wrongAttempts >= 2 && !app->showingSolution &&
         Button((Rectangle){532, 544, 220, 52}, "Show solution", false)) {
         app->showingSolution = true;
-        app->progress.topics[app->selectedTopic].solution = true;
-        SaveProgress(&app->progress);
     }
     if (app->selectedTopic == ARRAYS_TOPIC &&
         Button((Rectangle){770, 544, 220, 52}, "New question", false))
         StartNewQuestion(app);
-    if ((correct || app->showingSolution) && next &&
-        Button((Rectangle){1008, 544, 204, 52}, "Next question", correct))
-        OpenQuestion(app, app->questionIndex + 1);
+    // The first answer fixed this question's score, so the learner may move on at any time.
+    bool solved = correct || app->showingSolution;
+    if (HasNextQuestion(app)) {
+        if (Button((Rectangle){1008, 544, 204, 52}, "Next question", solved))
+            OpenQuestion(app, app->questionIndex + 1);
+    } else if (Button((Rectangle){1008, 544, 204, 52}, "Finish chapter", solved)) {
+        FinishChapter(app);
+    }
 }
 
-static void ShuffleOptions(Question *question)
+static void DrawChapterDone(AppState *app)
 {
-    // Swap whole options so each ID stays with its code and feedback.
-    for (int i = OPTION_COUNT - 1; i > 0; i--) {
-        int j = GetRandomValue(0, i);
-        AnswerOption temporary = question->options[i];
-        question->options[i] = question->options[j];
-        question->options[j] = temporary;
+    int topic = app->selectedTopic;
+    int count = app->lessons[topic].questionCount;
+    int best = app->progress.topics[topic].bestScore;
+    BadgeTier tier = BadgeForScore(app->runScore);
+    BadgeTier bestTier = BadgeForScore(best);
+    Label(TextFormat("%s / Chapter complete", topicTitles[topic]), 40, 122, 18, CQ_PURPLE);
+    Label(TextFormat("%d of %d correct on the first try  |  %d%%", app->runCorrect, count, app->runScore),
+          40, 158, 36, CQ_TEXT);
+    DrawPanel((Rectangle){40, 250, 1200, 376});
+    DrawBadgeIcon((Vector2){170, 380}, 70, tier);
+    if (tier == BADGE_NONE) {
+        Label("No badge this time", 300, 290, 30, CQ_TEXT);
+        Label(TextFormat("Reach %d%% to earn the Average badge.", AVERAGE_SCORE), 300, 340, 24, CQ_MUTED);
+    } else {
+        Label(TextFormat("%s badge", BadgeName(tier)), 300, 290, 30, CQ_TEXT);
+        Label(tier == BADGE_MASTER ? "Every question right on the first try." :
+              TextFormat("Reach %d%% for the %s badge.",
+                         tier == BADGE_AVERAGE ? EXPERT_SCORE : MASTER_SCORE,
+                         BadgeName(tier + 1)), 300, 340, 24, CQ_MUTED);
     }
+    if (app->runScore > app->previousBest && app->previousBest != NO_SCORE)
+        Label(TextFormat("New best score! Previous best: %d%%", app->previousBest), 300, 400, 22, CQ_PALE);
+    else if (app->previousBest != NO_SCORE)
+        Label(TextFormat("Best score kept: %d%%  |  %s", best, BadgeName(bestTier)),
+              300, 400, 22, CQ_MUTED);
+    Label("Only the first answer to each question counts. Retry the chapter to improve.",
+          300, 450, 20, CQ_MUTED);
+    if (Button((Rectangle){68, 544, 225, 52}, "Retry chapter", tier != BADGE_MASTER))
+        OpenQuestion(app, 0);
+    if (Button((Rectangle){310, 544, 225, 52}, "Back to topic map", tier == BADGE_MASTER))
+        app->screen = SCREEN_MAP;
+    if (Button((Rectangle){552, 544, 225, 52}, "My progress", false))
+        app->screen = SCREEN_PROGRESS;
 }
 
 static int AvailableTopics(const AppState *app, int topics[TOPIC_COUNT])
@@ -383,31 +452,44 @@ static void DrawExam(AppState *app)
 
 static void DrawProgress(AppState *app)
 {
-    int badges = 0;
+    int badges = 0, masters = 0;
     Label("MY PROGRESS", 40, 122, 18, CQ_PURPLE);
     for (int i = 0; i < TOPIC_COUNT; i++) {
         const TopicProgress *topic = &app->progress.topics[i];
-        bool hasTrace = i == ARRAYS_TOPIC || i == POINTERS_TOPIC || i == PARAMETERS_TOPIC;
-        bool earned = topic->viewed && topic->solved && (!hasTrace || topic->traced);
-        if (earned) badges++;
+        BadgeTier tier = BadgeForScore(topic->bestScore);
+        if (tier != BADGE_NONE) badges++;
+        if (tier == BADGE_MASTER) masters++;
         int x = 40 + (i % 2)*610;
         int y = 258 + (i / 2)*85;
         DrawPanel((Rectangle){(float)x, (float)y, 590, 72});
-        Label(topicTitles[i], x + 18, y + 9, 22, CQ_TEXT);
+        DrawBadgeIcon((Vector2){(float)x + 42, (float)y + 32}, 22, tier);
+        Label(topicTitles[i], x + 80, y + 9, 22, CQ_TEXT);
         const char *status = "Read the lesson";
-        if (earned) status = "Badge earned";
-        else if (topic->viewed && !topic->solved) status = "Pass the practice question";
-        else if (topic->viewed) status = "Finish the walkthrough";
-        Label(status, x + 18, y + 40, 18, earned ? CQ_PALE : CQ_MUTED);
-        if (topic->firstTry || topic->persistent)
-            Label(topic->firstTry && topic->persistent ? "First try  |  Persistent" :
-                  topic->firstTry ? "First try" : "Persistent", x + 315, y + 40, 18, CQ_PALE);
+        if (tier != BADGE_NONE)
+            status = TextFormat("Best score %d%%  |  %s badge", topic->bestScore, BadgeName(tier));
+        else if (topic->bestScore != NO_SCORE)
+            status = TextFormat("Best score %d%%  |  Reach %d%% for a badge",
+                                topic->bestScore, AVERAGE_SCORE);
+        else if (topic->viewed)
+            status = "Finish the practice questions";
+        Label(status, x + 80, y + 40, 18, tier != BADGE_NONE ? CQ_PALE : CQ_MUTED);
+        bool hasTrace = i == ARRAYS_TOPIC || i == POINTERS_TOPIC || i == PARAMETERS_TOPIC;
+        if (hasTrace && topic->traced) {
+            const char *done = "Walkthrough done";
+            Label(done, x + 572 - (int)TextWidth(done, 16), y + 12, 16, CQ_MUTED);
+        }
     }
-    Label(TextFormat("%d of %d topic badges earned%s", badges, TOPIC_COUNT,
-                     badges == TOPIC_COUNT ? "  |  Master badge earned" : ""),
+    Label(TextFormat("%d of %d chapter badges earned%s", badges, TOPIC_COUNT,
+                     masters == TOPIC_COUNT ? "  |  Every chapter mastered" : ""),
           40, 158, 36, CQ_TEXT);
-    Label("Read the lesson, finish its walkthrough if available, and pass practice.",
-          40, 211, 21, CQ_MUTED);
+    // Legend: badges come from the share of first answers that were right in a chapter.
+    static const char *legend[] = {"Average  50%", "Expert  80%", "Master  100%"};
+    for (int tier = BADGE_AVERAGE; tier <= BADGE_MASTER; tier++) {
+        int x = 52 + (tier - BADGE_AVERAGE) * 190;
+        DrawBadgeIcon((Vector2){(float)x, 220}, 12, tier);
+        Label(legend[tier - BADGE_AVERAGE], x + 22, 208, 20, CQ_TEXT);
+    }
+    Label("Score = first answers right in one run of a chapter.", 640, 209, 20, CQ_MUTED);
     if (app->progress.retry && Button((Rectangle){1030, 604, 210, 43}, "Retry save", true))
         SaveProgress(&app->progress);
 }
@@ -432,6 +514,7 @@ void DrawApp(AppState *app)
         case SCREEN_RESULTS: DrawResults(app); break;
         case SCREEN_TRACE: DrawWalkthrough(app); break;
         case SCREEN_EXAM: DrawExam(app); break;
+        case SCREEN_CHAPTER_DONE: DrawChapterDone(app); break;
     }
     DrawRectangle(0, 656, 1280, 64, CQ_SURFACE);
     Label(app->progress.notice ? app->progress.notice : "CodeQuest", 40, 677, 17, CQ_MUTED);

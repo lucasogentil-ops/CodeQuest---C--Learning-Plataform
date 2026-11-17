@@ -10,7 +10,7 @@ CodeQuest is an offline Windows desktop app for learning C and selected C++ conc
 - **Step through code.** Follow an array update, a pointer swap in C, or a comparison of pass by value and pass by reference in C++. Use **Next**, **Previous** and **Reset** to inspect prepared examples with highlighted lines and visible values.
 - **Practise with feedback.** A wrong answer gives you a hint. A second wrong answer on the same question unlocks the solution and its explanation. Use **Try again** to retry the question.
 - **Generate more Arrays questions.** **New question** varies the starting values, target index, amount and operation. The answer choices are shuffled.
-- **Earn badges and resume your progress.** **My progress** shows badges for topics where you read the lesson, finish its walkthrough if available, and submit a correct answer. Progress is saved under `%LOCALAPPDATA%\CodeQuest`.
+- **Earn badges and resume your progress.** Finish a chapter's questions to get a score: the share of questions you answered right on the first try. Your best score earns the chapter's badge: **Average** (50%), **Expert** (80%) or **Master** (100%). **My progress** shows each chapter's medal and best score. Progress is saved under `%LOCALAPPDATA%\CodeQuest`.
 
 ## Topics
 

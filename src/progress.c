@@ -13,6 +13,27 @@ static bool writable, validPrimary;
 
 typedef enum { MISSING, INVALID, UNSUPPORTED, VALID } LoadResult;
 
+enum { SAVE_VERSION = 2 };
+static bool loadedVersion1;     /* set when the last valid read was a version 1 save */
+
+BadgeTier BadgeForScore(int score)
+{
+    if (score >= MASTER_SCORE) return BADGE_MASTER;
+    if (score >= EXPERT_SCORE) return BADGE_EXPERT;
+    if (score >= AVERAGE_SCORE) return BADGE_AVERAGE;
+    return BADGE_NONE;
+}
+
+const char *BadgeName(BadgeTier tier)
+{
+    switch (tier) {
+        case BADGE_AVERAGE: return "Average";
+        case BADGE_EXPERT: return "Expert";
+        case BADGE_MASTER: return "Master";
+        default: return "No badge";
+    }
+}
+
 /* Import the earlier exam build's save once. It recorded practice, but no lesson or trace visits. */
 static bool ImportLegacy(TopicProgress *topics)
 {
@@ -41,10 +62,9 @@ static bool ImportLegacy(TopicProgress *topics)
     }
     for (int i = 0; i < PROGRESS_TOPICS; i++) {
         const uint32_t *entry = &words[2 + i * 3];
+        // Only attempts carry over: chapter badges need a full chapter score.
         topics[i].attempts = entry[0] > INT_MAX ? INT_MAX : (int)entry[0];
-        topics[i].solved = entry[1] != 0;
-        topics[i].firstTry = (entry[2] & 2u) != 0;
-        topics[i].persistent = (entry[2] & 4u) != 0;
+        topics[i].bestScore = NO_SCORE;
     }
     return true;
 }
@@ -71,36 +91,36 @@ static LoadResult ReadSave(const wchar_t *path, TopicProgress *topics)
     }
     const cJSON *version = cJSON_GetObjectItemCaseSensitive(root, "version");
     const cJSON *entries = cJSON_GetObjectItemCaseSensitive(root, "topics");
-    LoadResult result = INVALID;
-    if (cJSON_IsNumber(version) && version->valuedouble != 1) result = UNSUPPORTED;
-    if (cJSON_IsNumber(version) && version->valuedouble == 1 &&
-        cJSON_IsArray(entries) && cJSON_GetArraySize(entries) == PROGRESS_TOPICS) {
+    bool known = cJSON_IsNumber(version) &&
+        (version->valuedouble == 1 || version->valuedouble == SAVE_VERSION);
+    bool legacy = known && version->valuedouble == 1;
+    LoadResult result = cJSON_IsNumber(version) && !known ? UNSUPPORTED : INVALID;
+    if (known && cJSON_IsArray(entries) && cJSON_GetArraySize(entries) == PROGRESS_TOPICS) {
         TopicProgress loaded[PROGRESS_TOPICS] = {0};
         result = VALID;
         for (int i = 0; i < PROGRESS_TOPICS; i++) {
             const cJSON *entry = cJSON_GetArrayItem(entries, i);
             const cJSON *viewed = cJSON_GetObjectItemCaseSensitive(entry, "viewed");
             const cJSON *traced = cJSON_GetObjectItemCaseSensitive(entry, "traced");
-            const cJSON *solved = cJSON_GetObjectItemCaseSensitive(entry, "solved");
-            const cJSON *solution = cJSON_GetObjectItemCaseSensitive(entry, "solution");
             const cJSON *attempts = cJSON_GetObjectItemCaseSensitive(entry, "attempts");
-            const cJSON *firstTry = cJSON_GetObjectItemCaseSensitive(entry, "firstTry");
-            const cJSON *persistent = cJSON_GetObjectItemCaseSensitive(entry, "persistent");
+            const cJSON *best = cJSON_GetObjectItemCaseSensitive(entry, "bestScore");
+            // Version 1 saves recorded single-question practice, so they have no chapter score.
+            bool bestValid = legacy || (cJSON_IsNumber(best) &&
+                best->valuedouble == best->valueint &&
+                best->valueint >= NO_SCORE && best->valueint <= 100);
             if (!cJSON_IsBool(viewed) || !cJSON_IsBool(traced) ||
-                !cJSON_IsBool(solved) || !cJSON_IsBool(solution) ||
                 !cJSON_IsNumber(attempts) || attempts->valueint < 0 ||
-                attempts->valuedouble != attempts->valueint ||
-                (firstTry && !cJSON_IsBool(firstTry)) ||
-                (persistent && !cJSON_IsBool(persistent))) {
+                attempts->valuedouble != attempts->valueint || !bestValid) {
                 result = INVALID;
                 break;
             }
             loaded[i] = (TopicProgress){cJSON_IsTrue(viewed), cJSON_IsTrue(traced),
-                cJSON_IsTrue(solved), cJSON_IsTrue(solution), attempts->valueint,
-                cJSON_IsTrue(firstTry), cJSON_IsTrue(persistent)};
+                attempts->valueint, legacy ? NO_SCORE : best->valueint};
         }
-        if (result == VALID)
+        if (result == VALID) {
             for (int i = 0; i < PROGRESS_TOPICS; i++) topics[i] = loaded[i];
+            loadedVersion1 = legacy;
+        }
     }
     cJSON_Delete(root);
     return result;
@@ -109,6 +129,7 @@ static LoadResult ReadSave(const wchar_t *path, TopicProgress *topics)
 void OpenProgress(Progress *progress)
 {
     wchar_t base[MAX_PATH], directory[MAX_PATH], lockPath[MAX_PATH];
+    for (int i = 0; i < PROGRESS_TOPICS; i++) progress->topics[i] = (TopicProgress){.bestScore = NO_SCORE};
     DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", base, MAX_PATH);
     if (!length || length >= MAX_PATH - 32) {
         progress->notice = "Local progress folder unavailable. Learning is still available.";
@@ -129,7 +150,11 @@ void OpenProgress(Progress *progress)
     LoadResult primary = ReadSave(savePath, progress->topics);
     validPrimary = primary == VALID;
     writable = validPrimary || primary == MISSING;
-    if (validPrimary) return;
+    if (validPrimary) {
+        if (loadedVersion1)
+            progress->notice = "Badges now come from chapter scores. Finish a chapter to earn one.";
+        return;
+    }
     if (primary == UNSUPPORTED) {
         progress->notice = "This save uses a different version. Progress is read-only.";
         return;
@@ -159,13 +184,12 @@ void SaveProgress(Progress *progress)
     FILE *file = _wfopen(tempPath, L"wb");
     bool ok = file != NULL;
     if (file) {
-        fprintf(file, "{\"version\":1,\"topics\":[");
+        fprintf(file, "{\"version\":%d,\"topics\":[", SAVE_VERSION);
         for (int i = 0; i < PROGRESS_TOPICS; i++) {
             TopicProgress t = progress->topics[i];
-            fprintf(file, "%s{\"viewed\":%s,\"traced\":%s,\"solved\":%s,\"solution\":%s,\"attempts\":%d,\"firstTry\":%s,\"persistent\":%s}",
+            fprintf(file, "%s{\"viewed\":%s,\"traced\":%s,\"attempts\":%d,\"bestScore\":%d}",
                 i ? "," : "", t.viewed ? "true" : "false", t.traced ? "true" : "false",
-                t.solved ? "true" : "false", t.solution ? "true" : "false", t.attempts,
-                t.firstTry ? "true" : "false", t.persistent ? "true" : "false");
+                t.attempts, t.bestScore);
         }
         fprintf(file, "]}");
         ok = !ferror(file);

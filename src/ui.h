@@ -19,5 +19,7 @@ void DrawPanel(Rectangle bounds);
 bool Button(Rectangle bounds, const char *label, bool primary);
 bool TopicButton(Rectangle bounds, const char *title, int number);
 void Label(const char *text, int x, int y, int size, Color color);
+/* Medal icon: tier 0 draws an empty slot, 1-3 draw bronze, silver and gold with 1-3 stars. */
+void DrawBadgeIcon(Vector2 center, float radius, int tier);
 
 #endif

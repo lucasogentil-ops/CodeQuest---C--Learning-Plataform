@@ -1,4 +1,5 @@
 #include "ui.h"
+#include <math.h>
 #include <stddef.h>
 
 static Font uiFont;
@@ -56,6 +57,53 @@ bool Button(Rectangle bounds, const char *label, bool primary)
     Label(label, (int)(bounds.x + (bounds.width - width)/2),
           (int)(bounds.y + (bounds.height - 28)/2), 20, primary ? CQ_BACKGROUND : CQ_TEXT);
     return ButtonClicked(bounds);
+}
+
+static void DrawStar(Vector2 center, float radius, Color color)
+{
+    Vector2 points[10];
+    for (int i = 0; i < 10; i++) {
+        float angle = (-90.0f + 36.0f * i) * DEG2RAD;
+        float r = i % 2 ? radius * 0.45f : radius;
+        points[i] = (Vector2){center.x + cosf(angle) * r, center.y + sinf(angle) * r};
+    }
+    // Angles grow clockwise on screen, so list each triangle backwards to keep it counter-clockwise.
+    for (int i = 0; i < 10; i++) DrawTriangle(center, points[(i + 1) % 10], points[i], color);
+}
+
+void DrawBadgeIcon(Vector2 center, float radius, int tier)
+{
+    if (tier <= 0) {
+        DrawCircleV(center, radius, CQ_CARD);
+        DrawRing(center, radius - 2, radius, 0, 360, 48, CQ_BORDER);
+        DrawStar(center, radius * 0.45f, CQ_BORDER);
+        return;
+    }
+    static const Color metal[] = {{205, 127, 50, 255}, {196, 206, 222, 255}, {242, 194, 58, 255}};
+    static const Color shade[] = {{140, 82, 32, 255}, {120, 132, 152, 255}, {176, 128, 20, 255}};
+    Color face = metal[tier - 1], edge = shade[tier - 1];
+
+    // Ribbon tails behind the medal.
+    float w = radius * 0.5f, length = radius * 1.25f, top = center.y + radius * 0.2f;
+    DrawRectanglePro((Rectangle){center.x - radius * 0.3f, top, w, length}, (Vector2){w / 2, 0},
+                     22, CQ_PURPLE);
+    DrawRectanglePro((Rectangle){center.x + radius * 0.3f, top, w, length}, (Vector2){w / 2, 0},
+                     -22, CQ_PALE);
+
+    DrawCircleV(center, radius, edge);
+    DrawCircleV(center, radius * 0.82f, face);
+    DrawRing(center, radius * 0.66f, radius * 0.7f, 0, 360, 48, edge);
+
+    if (tier == 1) {
+        DrawStar(center, radius * 0.5f, edge);
+    } else if (tier == 2) {
+        DrawStar((Vector2){center.x - radius * 0.3f, center.y}, radius * 0.32f, edge);
+        DrawStar((Vector2){center.x + radius * 0.3f, center.y}, radius * 0.32f, edge);
+    } else {
+        DrawStar((Vector2){center.x, center.y - radius * 0.22f}, radius * 0.3f, edge);
+        DrawStar((Vector2){center.x - radius * 0.33f, center.y + radius * 0.2f}, radius * 0.26f, edge);
+        DrawStar((Vector2){center.x + radius * 0.33f, center.y + radius * 0.2f}, radius * 0.26f, edge);
+    }
 }
 
 bool TopicButton(Rectangle bounds, const char *title, int number)

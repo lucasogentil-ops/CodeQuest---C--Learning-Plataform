@@ -5,7 +5,8 @@
 #include "progress.h"
 
 typedef enum {
-    SCREEN_MAP, SCREEN_LESSON, SCREEN_PROGRESS, SCREEN_PRACTICE, SCREEN_RESULTS, SCREEN_TRACE, SCREEN_EXAM
+    SCREEN_MAP, SCREEN_LESSON, SCREEN_PROGRESS, SCREEN_PRACTICE, SCREEN_RESULTS, SCREEN_TRACE, SCREEN_EXAM,
+    SCREEN_CHAPTER_DONE
 } Screen;
 
 enum { ARRAYS_TRACE, POINTERS_TRACE, PARAMETERS_TRACE };
@@ -36,6 +37,12 @@ typedef struct {
     Lesson lessons[TOPIC_COUNT];
     Question currentQuestion;
     int questionIndex;              /* position of currentQuestion in its lesson */
+    /* Chapter run: only the first answer to each lesson question counts toward the score. */
+    bool generatedQuestion;         /* extra Arrays question, never scored */
+    bool firstAnswerGiven;
+    int runCorrect;
+    int runScore;                   /* percentage shown on the chapter summary */
+    int previousBest;
     int wrongAttempts;
     bool showingSolution;
     Progress progress;
