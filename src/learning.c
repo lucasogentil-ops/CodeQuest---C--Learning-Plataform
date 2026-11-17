@@ -99,12 +99,21 @@ bool LoadLesson(const char *path, Lesson *lesson)
     cJSON *root = cJSON_ParseWithOpts(file, NULL, true);
     UnloadFileText(file);
 
-    Lesson loaded = {0};
+    // A lesson holds up to QUESTION_LIMIT questions, so keep the scratch copy off the stack.
+    static Lesson loaded;
+    loaded = (Lesson){0};
+    const cJSON *questions = cJSON_GetObjectItemCaseSensitive(root, "questions");
+    loaded.questionCount = cJSON_GetArraySize(questions);
     bool valid = cJSON_IsObject(root) &&
         ReadText(root, "title", loaded.title, sizeof loaded.title) &&
         ReadText(root, "explanation", loaded.explanation, sizeof loaded.explanation) &&
         ReadText(root, "code", loaded.code, sizeof loaded.code) &&
-        ReadQuestion(cJSON_GetObjectItemCaseSensitive(root, "question"), &loaded.question);
+        cJSON_IsArray(questions) && loaded.questionCount >= 1 &&
+        loaded.questionCount <= QUESTION_LIMIT;
+    for (int i = 0; valid && i < loaded.questionCount; i++) {
+        valid = ReadQuestion(cJSON_GetArrayItem(questions, i), &loaded.questions[i]);
+        if (!valid) fprintf(stderr, "Invalid question %d in %s\n", i + 1, path);
+    }
     cJSON_Delete(root);
     if (valid) *lesson = loaded;
     return valid;

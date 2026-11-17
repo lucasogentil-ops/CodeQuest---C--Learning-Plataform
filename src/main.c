@@ -34,7 +34,8 @@ int main(void)
         return 1;
     }
 
-    AppState app = {.screen = SCREEN_MAP, .selectedAnswer = NO_SELECTION};
+    // Static: every lesson now carries several questions, too large for the stack.
+    static AppState app = {.screen = SCREEN_MAP, .selectedAnswer = NO_SELECTION};
     OpenProgress(&app.progress);
     const char *lessonFiles[TOPIC_COUNT] = {
         [FOUNDATIONS_TOPIC] = "foundations.json", [LOOPS_TOPIC] = "loops.json",

@@ -2,27 +2,28 @@
   "title": "Find the end of a string",
   "explanation": "A C string ends with a null character. A loop can count\ncharacters until it reaches that marker. The counter here\nbelongs to the block where it is declared.",
   "code": "char word[] = \"cat\";\nint length = 0;\nwhile (word[length] != '\\0') {\n    length++;\n}",
-  "question": {
-    "prompt": "Which condition stops at the string terminator?",
-    "code": "char word[] = \"cat\";\nint length = 0;\nwhile (/* Missing line */) {\n    length++;\n}",
-    "hint": "The terminator is the null character. Think about when to keep counting.",
-    "options": [
-      {
-        "id": "a",
-        "code": "word[length] != '\\0'",
-        "feedback": "Continue until the current character is null."
-      },
-      {
-        "id": "b",
-        "code": "word[length] == '\\0'",
-        "feedback": "This only continues when the current character is null."
-      },
-      {
-        "id": "c",
-        "code": "word[length] != '0'",
-        "feedback": "'0' is the printable digit zero."
-      }
-    ],
-    "correctOptionId": "a"
-  }
+  "questions": [
+    {
+      "prompt": "Which condition stops at the string terminator?",
+      "code": "char word[] = \"cat\";\nint length = 0;\nwhile (/* Missing line */) {\n    length++;\n}",
+      "hint": "The terminator is the null character. Think about when to keep counting.",
+      "options": [
+        {"id": "a", "code": "word[length] != '\\0'", "feedback": "Continue until the current character is null."},
+        {"id": "b", "code": "word[length] == '\\0'", "feedback": "This only continues when the current character is null."},
+        {"id": "c", "code": "word[length] != '0'", "feedback": "'0' is the printable digit zero."}
+      ],
+      "correctOptionId": "a"
+    },
+    {
+      "prompt": "Which expression reads the first character?",
+      "code": "char word[] = \"cat\";\nchar first = /* Missing line */;",
+      "hint": "A string is an array of characters. Indexes start at zero.",
+      "options": [
+        {"id": "a", "code": "word[0]", "feedback": "Index 0 holds the first character, 'c'."},
+        {"id": "b", "code": "word[1]", "feedback": "Index 1 holds the second character, 'a'."},
+        {"id": "c", "code": "word", "feedback": "word is the whole array, not a single char."}
+      ],
+      "correctOptionId": "a"
+    }
+  ]
 }

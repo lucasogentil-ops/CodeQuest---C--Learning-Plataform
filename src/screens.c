@@ -57,6 +57,29 @@ static void DrawMap(AppState *app)
     Label("Your first badge is ahead of you.", 878, 581, 18, CQ_MUTED);
 }
 
+static void ResetPractice(AppState *app)
+{
+    app->selectedAnswer = NO_SELECTION;
+    app->wrongAttempts = 0;
+    app->questionSubmissions = 0;
+    app->showingSolution = false;
+    app->screen = SCREEN_PRACTICE;
+}
+
+/* Open question `index` of the selected topic's lesson. */
+static void OpenQuestion(AppState *app, int index)
+{
+    const Lesson *lesson = &app->lessons[app->selectedTopic];
+    app->questionIndex = index;
+    app->currentQuestion = lesson->questions[index];
+    ResetPractice(app);
+}
+
+static bool HasNextQuestion(const AppState *app)
+{
+    return app->questionIndex + 1 < app->lessons[app->selectedTopic].questionCount;
+}
+
 static void DrawLesson(AppState *app)
 {
     int topic = app->selectedTopic;
@@ -75,14 +98,9 @@ static void DrawLesson(AppState *app)
         Label("C example", 742, 282, 26, CQ_TEXT);
         Label(lesson->code, 742, 345, 24, CQ_TEXT);
         if (OpenWalkthrough(app, (Rectangle){742, 544, 202, 52})) return;
-        if (Button((Rectangle){960, 544, 252, 52}, "Try a question", true)) {
-            app->currentQuestion = lesson->question;
-            app->selectedAnswer = NO_SELECTION;
-            app->wrongAttempts = 0;
-            app->questionSubmissions = 0;
-            app->showingSolution = false;
-            app->screen = SCREEN_PRACTICE;
-        }
+        const char *start = lesson->questionCount > 1 ?
+            TextFormat("Try %d questions", lesson->questionCount) : "Try a question";
+        if (Button((Rectangle){960, 544, 252, 52}, start, true)) OpenQuestion(app, 0);
         return;
     }
     Label("LESSON UNAVAILABLE", 40, 122, 18, CQ_PURPLE);
@@ -150,17 +168,17 @@ static void DrawWalkthrough(AppState *app)
 static void StartNewQuestion(AppState *app)
 {
     GenerateArraysQuestion(&app->currentQuestion);
-    app->selectedAnswer = NO_SELECTION;
-    app->wrongAttempts = 0;
-    app->questionSubmissions = 0;
-    app->showingSolution = false;
-    app->screen = SCREEN_PRACTICE;
+    ResetPractice(app);
 }
 
 static void DrawPractice(AppState *app)
 {
     const Question *question = &app->currentQuestion;
-    Label(TextFormat("%s / Practice", topicTitles[app->selectedTopic]), 40, 122, 18, CQ_PURPLE);
+    int count = app->lessons[app->selectedTopic].questionCount;
+    Label(count > 1 ? TextFormat("%s / Practice / Question %d of %d", topicTitles[app->selectedTopic],
+                                 app->questionIndex + 1, count)
+                    : TextFormat("%s / Practice", topicTitles[app->selectedTopic]),
+          40, 122, 18, CQ_PURPLE);
     Label(question->prompt, 40, 158, 36, CQ_TEXT);
     DrawPanel((Rectangle){40, 250, 570, 376});
     Label("C example", 68, 282, 26, CQ_TEXT);
@@ -209,7 +227,8 @@ static void DrawResults(AppState *app)
     Label(app->showingSolution ? "Correct answer" : "Your answer", 68, 282, 24, CQ_MUTED);
     Label(answer->code, 68, 326, 26, CQ_TEXT);
     Label(correct || app->showingSolution ? answer->feedback : question->hint, 68, 396, 24, CQ_TEXT);
-    if (Button((Rectangle){68, 544, 225, 52}, "Back to topic map", correct))
+    bool next = HasNextQuestion(app);
+    if (Button((Rectangle){68, 544, 225, 52}, "Back to topic map", correct && !next))
         app->screen = SCREEN_MAP;
     if (Button((Rectangle){310, 544, 205, 52}, "Try again", !correct)) {
         app->selectedAnswer = NO_SELECTION;
@@ -229,6 +248,9 @@ static void DrawResults(AppState *app)
     if (app->selectedTopic == ARRAYS_TOPIC &&
         Button((Rectangle){770, 544, 220, 52}, "New question", false))
         StartNewQuestion(app);
+    if ((correct || app->showingSolution) && next &&
+        Button((Rectangle){1008, 544, 204, 52}, "Next question", correct))
+        OpenQuestion(app, app->questionIndex + 1);
 }
 
 static void ShuffleOptions(Question *question)
@@ -266,7 +288,10 @@ static void StartExam(AppState *app)
     for (int i = 0; i < exam->count; i++) {
         exam->topics[i] = topics[i];
         if (topics[i] == ARRAYS_TOPIC) GenerateArraysQuestion(&exam->questions[i]);
-        else exam->questions[i] = app->lessons[topics[i]].question;
+        else {
+            const Lesson *lesson = &app->lessons[topics[i]];
+            exam->questions[i] = lesson->questions[GetRandomValue(0, lesson->questionCount - 1)];
+        }
         ShuffleOptions(&exam->questions[i]);
     }
 }

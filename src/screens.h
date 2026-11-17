@@ -35,6 +35,7 @@ typedef struct {
     bool lessonAvailable[TOPIC_COUNT];
     Lesson lessons[TOPIC_COUNT];
     Question currentQuestion;
+    int questionIndex;              /* position of currentQuestion in its lesson */
     int wrongAttempts;
     bool showingSolution;
     Progress progress;

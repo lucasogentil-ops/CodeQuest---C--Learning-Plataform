@@ -19,11 +19,15 @@ typedef struct {
     char correctOptionId[16];
 } Question;
 
+enum { QUESTION_LIMIT = 10 };
+
+/* One lesson per chapter file, holding 1 to QUESTION_LIMIT practice questions. */
 typedef struct {
     char title[100];
     char explanation[480];
     char code[240];
-    Question question;
+    int questionCount;
+    Question questions[QUESTION_LIMIT];
 } Lesson;
 
 enum { TRACE_COUNT = 3, TRACE_LIMIT = 8, TRACE_VALUES = 3 };

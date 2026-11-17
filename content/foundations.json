@@ -2,27 +2,28 @@
   "title": "Print an integer",
   "explanation": "printf uses a format string to decide how to display a value.\nUse %d for an int and \\n to end the output line.",
   "code": "int score = 12;\nprintf(\"%d\\n\", score);",
-  "question": {
-    "prompt": "Which line prints the integer score?",
-    "code": "int score = 12;\n/* Missing line */",
-    "hint": "Think about the format specifier for a decimal integer.",
-    "options": [
-      {
-        "id": "a",
-        "code": "printf(\"%d\\n\", score);",
-        "feedback": "%d prints the int as a decimal number."
-      },
-      {
-        "id": "b",
-        "code": "printf(\"%c\\n\", score);",
-        "feedback": "%c prints a character."
-      },
-      {
-        "id": "c",
-        "code": "printf(\"score\\n\");",
-        "feedback": "The string prints the word score."
-      }
-    ],
-    "correctOptionId": "a"
-  }
+  "questions": [
+    {
+      "prompt": "Which line prints the integer score?",
+      "code": "int score = 12;\n/* Missing line */",
+      "hint": "Think about the format specifier for a decimal integer.",
+      "options": [
+        {"id": "a", "code": "printf(\"%d\\n\", score);", "feedback": "%d prints the int as a decimal number."},
+        {"id": "b", "code": "printf(\"%c\\n\", score);", "feedback": "%c prints a character."},
+        {"id": "c", "code": "printf(\"score\\n\");", "feedback": "The string prints the word score."}
+      ],
+      "correctOptionId": "a"
+    },
+    {
+      "prompt": "Which line prints the character grade?",
+      "code": "char grade = 'A';\n/* Missing line */",
+      "hint": "Each type has its own format specifier. Which one is for a single character?",
+      "options": [
+        {"id": "a", "code": "printf(\"%c\\n\", grade);", "feedback": "%c prints the char as a character, A."},
+        {"id": "b", "code": "printf(\"%d\\n\", grade);", "feedback": "%d prints the character code, 65."},
+        {"id": "c", "code": "printf(\"%s\\n\", grade);", "feedback": "%s expects a string, not a single char."}
+      ],
+      "correctOptionId": "a"
+    }
+  ]
 }

@@ -59,6 +59,8 @@ The build places `codequest.exe`, `assets/` and `content/` under `build/`. The r
 
 CodeQuest uses C11 and raylib for the desktop interface. cJSON loads the lessons, questions and prepared walkthrough steps from `content/`. Lesson text and examples can be edited there independently of the screen code. The app runs offline without an account.
 
+Each chapter has one lesson file (for example `content/pointers.json`) with `title`, `explanation`, `code` and a `questions` array of 1 to 10 questions. Each question has a `prompt`, a `code` sample containing exactly one `/* Missing line */`, a `hint`, three `options` (`id`, `code`, `feedback`) and the `correctOptionId`. Practice goes through the questions in order. The exam picks one question at random from each chapter.
+
 The Windows build has passed with compiler warnings enabled. Checks with simulated button presses covered all eight practice flows and the navigation boundaries of all three walkthroughs.
 
 ## Roadmap
