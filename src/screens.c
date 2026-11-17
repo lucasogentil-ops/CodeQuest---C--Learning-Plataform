@@ -5,6 +5,8 @@
 
 _Static_assert((int)TOPIC_COUNT == (int)PROGRESS_TOPICS, "Save topic count must match map");
 
+static int Min(int a, int b) { return a < b ? a : b; }
+
 static const Walkthrough *TopicTrace(const AppState *app)
 {
     switch (app->selectedTopic) {
@@ -131,13 +133,13 @@ static void DrawLesson(AppState *app)
         }
         const Lesson *lesson = &app->lessons[topic];
         Label(TextFormat("%s / Lesson", topicTitles[topic]), 40, 122, 18, CQ_PURPLE);
-        Label(lesson->title, 40, 158, 36, CQ_TEXT);
+        LabelFit(lesson->title, 40, 158, 1200, 36, CQ_TEXT);
         DrawPanel((Rectangle){40, 250, 650, 376});
         Label("Key idea", 68, 282, 26, CQ_TEXT);
-        Label(lesson->explanation, 68, 340, 24, CQ_MUTED);
+        LabelWrapped(lesson->explanation, 68, 334, 594, 22, CQ_MUTED);
         DrawPanel((Rectangle){714, 250, 526, 376});
         Label("C example", 742, 282, 26, CQ_TEXT);
-        Label(lesson->code, 742, 345, 24, CQ_TEXT);
+        DrawCodeBlock(lesson->code, (Rectangle){742, 326, 470, 202}, 22);
         if (OpenWalkthrough(app, (Rectangle){742, 544, 202, 52})) return;
         const char *start = lesson->questionCount > 1 ?
             TextFormat("Try %d questions", lesson->questionCount) : "Try a question";
@@ -168,27 +170,33 @@ static void DrawWalkthrough(AppState *app)
         SaveProgress(&app->progress);
     }
     Label(TextFormat("%s / WALKTHROUGH", trace->language), 40, 122, 18, CQ_PURPLE);
-    Label(trace->title, 40, 158, 36, CQ_TEXT);
+    LabelFit(trace->title, 40, 158, 1200, 36, CQ_TEXT);
     Label(TextFormat("Step %d of %d  |  Values shown at this step",
                      app->traceStep + 1, trace->stepCount), 40, 210, 20, CQ_MUTED);
     DrawPanel((Rectangle){40, 250, 624, 306});
     DrawPanel((Rectangle){688, 250, 552, 306});
     Label("Example code", 68, 270, 22, CQ_TEXT);
+    DrawRectangleRounded((Rectangle){56, 300, 592, 240}, 0.05f, 10, CQ_CODE_BG);
+    int codeSize = 18;
+    for (int i = 0; i < trace->lineCount; i++)
+        codeSize = Min(codeSize, CodeFitSize(trace->lines[i], 500, 28, 18));
     for (int i = 0; i < trace->lineCount; i++) {
         int y = 307 + i * 28;
         bool active = i == step->line;
-        if (active) DrawRectangleRounded((Rectangle){60, (float)(y - 3), 584, 28}, 0.2f, 8, CQ_CARD);
-        Label(TextFormat("%s %d", active ? ">" : " ", i + 1), 72, y, 17,
-              active ? CQ_PALE : CQ_MUTED);
-        Label(trace->lines[i], 122, y, 19, CQ_TEXT);
+        if (active) {
+            DrawRectangleRounded((Rectangle){62, (float)(y - 3), 580, 28}, 0.2f, 8, CQ_CARD_HOVER);
+            DrawRectangleRounded((Rectangle){62, (float)(y - 3), 4, 28}, 0.8f, 4, CQ_PALE);
+        }
+        CodeLabel(TextFormat("%2d", i + 1), 76, y + 1, 16, active ? CQ_PALE : CQ_BORDER);
+        CodeLabel(trace->lines[i], 122, y, codeSize, CQ_TEXT);
     }
     Label("Values and targets", 716, 270, 22, CQ_TEXT);
     for (int i = 0; i < TRACE_VALUES; i++) {
         int y = 308 + i * 43;
         DrawRectangleRounded((Rectangle){716, (float)y, 496, 36}, 0.25f, 8, CQ_CARD);
-        Label(step->values[i], 732, y + 5, 19, CQ_TEXT);
+        CodeLabel(step->values[i], 732, y + 6, CodeFitSize(step->values[i], 464, 30, 18), CQ_TEXT);
     }
-    Label(step->explanation, 716, 457, 20, CQ_TEXT);
+    LabelWrapped(step->explanation, 716, 450, 496, 19, CQ_TEXT);
 
     int nextStep = app->traceStep;
     if (app->traceStep > 0) {
@@ -214,6 +222,21 @@ static void StartNewQuestion(AppState *app)
     app->generatedQuestion = true;
 }
 
+/* Prompt, code sample and answer choices, shared by practice and exam questions. */
+static void DrawQuestionBody(const Question *question, int *selected)
+{
+    LabelFit(question->prompt, 40, 158, 1200, 36, CQ_TEXT);
+    DrawPanel((Rectangle){40, 250, 570, 376});
+    Label("C example", 68, 282, 26, CQ_TEXT);
+    DrawCodeBlock(question->code, (Rectangle){62, 326, 526, 278}, 22);
+    DrawPanel((Rectangle){634, 250, 606, 376});
+    Label("Choose one answer", 662, 282, 26, CQ_TEXT);
+    for (int i = 0; i < OPTION_COUNT; i++) {
+        Rectangle bounds = {662, (float)(330 + 60*i), 550, 48};
+        if (OptionButton(bounds, i, question->options[i].code, *selected == i)) *selected = i;
+    }
+}
+
 static void DrawPractice(AppState *app)
 {
     const Question *question = &app->currentQuestion;
@@ -222,17 +245,7 @@ static void DrawPractice(AppState *app)
                                  app->questionIndex + 1, count)
                     : TextFormat("%s / Practice", topicTitles[app->selectedTopic]),
           40, 122, 18, CQ_PURPLE);
-    Label(question->prompt, 40, 158, 36, CQ_TEXT);
-    DrawPanel((Rectangle){40, 250, 570, 376});
-    Label("C example", 68, 282, 26, CQ_TEXT);
-    Label(question->code, 68, 345, 24, CQ_TEXT);
-    DrawPanel((Rectangle){634, 250, 606, 376});
-    Label("Choose one answer", 662, 282, 26, CQ_TEXT);
-    for (int i = 0; i < OPTION_COUNT; i++) {
-        const char *label = TextFormat("%c. %s", 'A' + i, question->options[i].code);
-        if (Button((Rectangle){662, (float)(330 + 60*i), 550, 48}, label, app->selectedAnswer == i))
-            app->selectedAnswer = i;
-    }
+    DrawQuestionBody(question, &app->selectedAnswer);
     if (app->selectedAnswer == NO_SELECTION) {
         Label("Select an answer to continue.", 662, 557, 20, CQ_MUTED);
     } else if (Button((Rectangle){662, 544, 220, 52}, "Check answer", true)) {
@@ -257,17 +270,26 @@ static void DrawResults(AppState *app)
     bool correct = IsCorrectAnswer(question, app->selectedAnswer);
     Label(TextFormat("%s / Result", topicTitles[app->selectedTopic]), 40, 122, 18, CQ_PURPLE);
     const char *heading = correct ? "Correct!" : "Give it another try";
-    if (app->showingSolution) heading = "Solution";
-    Label(heading, 40, 158, 36, CQ_TEXT);
+    Color accent = correct ? CQ_SUCCESS : CQ_WARNING;
+    if (app->showingSolution) {
+        heading = "Solution";
+        accent = CQ_PALE;
+    }
+    Label(heading, 40, 158, 36, accent);
     DrawPanel((Rectangle){40, 250, 1200, 376});
     const AnswerOption *answer = &question->options[app->selectedAnswer];
     if (app->showingSolution) {
         for (int i = 0; i < OPTION_COUNT; i++)
             if (IsCorrectAnswer(question, i)) answer = &question->options[i];
     }
-    Label(app->showingSolution ? "Correct answer" : "Your answer", 68, 282, 24, CQ_MUTED);
-    Label(answer->code, 68, 326, 26, CQ_TEXT);
-    Label(correct || app->showingSolution ? answer->feedback : question->hint, 68, 396, 24, CQ_TEXT);
+    Label(app->showingSolution ? "Correct answer" : "Your answer", 68, 278, 22, CQ_MUTED);
+    Rectangle codeBox = {68, 312, 1144, 62};
+    DrawCodeBlock(answer->code, codeBox, 26);
+    DrawRectangleRounded((Rectangle){codeBox.x, codeBox.y, 5, codeBox.height}, 0.8f, 4,
+                         correct || app->showingSolution ? accent : CQ_ERROR);
+    bool explain = correct || app->showingSolution;
+    Label(explain ? "Why" : "Hint", 68, 392, 20, explain ? accent : CQ_WARNING);
+    LabelWrapped(explain ? answer->feedback : question->hint, 68, 422, 1144, 22, CQ_TEXT);
     if (Button((Rectangle){68, 544, 225, 52}, "Back to topic map", false))
         app->screen = SCREEN_MAP;
     if (Button((Rectangle){310, 544, 205, 52}, "Try again", !correct)) {
@@ -391,17 +413,7 @@ static void DrawExamQuestion(AppState *app)
     bool last = exam->index + 1 == exam->count;
     Label(TextFormat("Exam / Question %d of %d", exam->index + 1, exam->count),
           40, 122, 18, CQ_PURPLE);
-    Label(question->prompt, 40, 158, 36, CQ_TEXT);
-    DrawPanel((Rectangle){40, 250, 570, 376});
-    Label("C example", 68, 282, 26, CQ_TEXT);
-    Label(question->code, 68, 345, 24, CQ_TEXT);
-    DrawPanel((Rectangle){634, 250, 606, 376});
-    Label("Choose one answer", 662, 282, 26, CQ_TEXT);
-    for (int i = 0; i < OPTION_COUNT; i++) {
-        const char *label = TextFormat("%c. %s", 'A' + i, question->options[i].code);
-        if (Button((Rectangle){662, (float)(330 + 60*i), 550, 48}, label, exam->selected == i))
-            exam->selected = i;
-    }
+    DrawQuestionBody(question, &exam->selected);
     if (exam->selected == NO_SELECTION) {
         Label("Select an answer to continue.", 662, 557, 20, CQ_MUTED);
     } else if (Button((Rectangle){662, 544, 220, 52}, last ? "Finish exam" : "Next question", true)) {
@@ -497,7 +509,7 @@ static void DrawProgress(AppState *app)
 void DrawApp(AppState *app)
 {
     ClearBackground(CQ_BACKGROUND);
-    DrawRectangle(0, 0, 1280, 88, CQ_SURFACE);
+    DrawHeaderBar(1280, 88);
     Label("Code", 40, 23, 30, CQ_TEXT);
     Label("Quest", 40 + (int)TextWidth("Code", 30), 23, 30, CQ_PURPLE);
     if (Button((Rectangle){238, 20, 150, 48}, "Topic map", app->screen == SCREEN_MAP)) app->screen = SCREEN_MAP;
