@@ -2,11 +2,12 @@
 #define CODEQUEST_SCREENS_H
 
 #include "learning.h"
+#include "duel.h"
 #include "progress.h"
 
 typedef enum {
     SCREEN_MAP, SCREEN_LESSON, SCREEN_PROGRESS, SCREEN_PRACTICE, SCREEN_RESULTS, SCREEN_TRACE, SCREEN_EXAM,
-    SCREEN_CHAPTER_DONE
+    SCREEN_CHAPTER_DONE, SCREEN_DUEL
 } Screen;
 
 enum { ARRAYS_TRACE, POINTERS_TRACE, PARAMETERS_TRACE };
@@ -49,6 +50,7 @@ typedef struct {
     Walkthrough traces[TRACE_COUNT];
     int traceStep;
     ExamState exam;
+    DuelState duel;
     int questionSubmissions;
 } AppState;
 

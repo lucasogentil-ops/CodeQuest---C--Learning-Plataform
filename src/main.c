@@ -29,11 +29,12 @@ int main(void)
     SetWindowMinSize(640, 360);
     SetTargetFPS(60);
     if (!LoadUi()) {
-        fprintf(stderr, "Cannot load assets/fonts/NotoSans.ttf. Rebuild to copy the font assets.\n");
+        fprintf(stderr, "Cannot load the UI fonts. Check NotoSans.ttf and NotoSansMono.ttf in assets/fonts.\n");
         CloseWindow();
         return 1;
     }
 
+    LoadDuelArt();
     // Static: every lesson now carries several questions, too large for the stack.
     static AppState app = {.screen = SCREEN_MAP, .selectedAnswer = NO_SELECTION};
     OpenProgress(&app.progress);
@@ -92,6 +93,7 @@ int main(void)
         EndDrawing();
     }
 
+    UnloadDuelArt();
     UnloadUi();
     CloseProgress();
     CloseWindow();

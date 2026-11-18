@@ -6,6 +6,8 @@ CodeQuest is an offline Windows desktop app for learning C and selected C++ conc
 
 ## What you can do
 
+- **Play Debug Duel.** Answer code questions to power Bytefox's attacks, guard, break shields and defeat the Null Warden. Manage mana and potions between turns.
+
 - **Explore any topic.** All eight topics are available from the start, each with a lesson, a code example and a practice question.
 - **Step through code.** Follow an array update, a pointer swap in C, or a comparison of pass by value and pass by reference in C++. Use **Next**, **Previous** and **Reset** to inspect prepared examples with highlighted lines and visible values.
 - **Practise with feedback.** A wrong answer gives you a hint. A second wrong answer on the same question unlocks the solution and its explanation. Use **Try again** to retry the question.
@@ -29,7 +31,7 @@ CodeQuest is an offline Windows desktop app for learning C and selected C++ conc
 
 ## Run on Windows
 
-Download the [Windows x64 ZIP](https://github.com/lucasogentil-ops/CodeQuest---C--Learning-Plataform/releases/tag/v0.1.1), extract it and open `codequest.exe` from the extracted CodeQuest folder. Keep its DLLs, assets and content together. From a source checkout, run `.\scripts\package.ps1` to build `dist/CodeQuest-Windows-x64.zip`.
+Download the [Windows x64 ZIP](https://github.com/lucasogentil-ops/CodeQuest---C--Learning-Plataform/releases/tag/v0.2.0), extract it and open `codequest.exe` from the extracted CodeQuest folder. Keep its DLLs, assets and content together. From a source checkout, run `.\scripts\package.ps1` to build `dist/CodeQuest-Windows-x64.zip`.
 
 ## Build from source
 

@@ -7,7 +7,8 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 find_package(raylib 6.0 CONFIG REQUIRED)
 find_package(cJSON CONFIG REQUIRED)
-add_executable(codequest src/main.c src/screens.c src/ui.c src/anim.c src/learning.c src/progress.c)
+add_executable(codequest src/main.c src/screens.c src/ui.c src/anim.c src/learning.c src/progress.c
+    src/duel.c src/duel_view.c)
 target_link_libraries(codequest PRIVATE raylib cjson)
 add_custom_command(TARGET codequest POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory

@@ -518,6 +518,10 @@ void DrawApp(AppState *app)
         if (app->screen != SCREEN_EXAM) app->exam.phase = EXAM_INTRO;
         app->screen = SCREEN_EXAM;
     }
+    if (Button((Rectangle){726, 20, 167, 48}, "Debug Duel", app->screen == SCREEN_DUEL)) {
+        if (app->screen != SCREEN_DUEL) app->duel = (DuelState){0};
+        app->screen = SCREEN_DUEL;
+    }
     switch (app->screen) {
         case SCREEN_MAP: DrawMap(app); break;
         case SCREEN_LESSON: DrawLesson(app); break;
@@ -527,6 +531,7 @@ void DrawApp(AppState *app)
         case SCREEN_TRACE: DrawWalkthrough(app); break;
         case SCREEN_EXAM: DrawExam(app); break;
         case SCREEN_CHAPTER_DONE: DrawChapterDone(app); break;
+        case SCREEN_DUEL: DrawDebugDuel(&app->duel); break;
     }
     DrawRectangle(0, 656, 1280, 64, CQ_SURFACE);
     Label(app->progress.notice ? app->progress.notice : "CodeQuest", 40, 677, 17, CQ_MUTED);
